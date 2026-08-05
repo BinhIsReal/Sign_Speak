@@ -406,9 +406,8 @@ class SupabaseService {
         const isSelfId = currentUserId && uId === currentUserId;
         const isSelfEmail = currentEmail && uEmail === currentEmail;
         const isSelfUsername = currentUsername && uUsername === currentUsername;
-        const isSelfName = currentDisplayName && uDisplayName === currentDisplayName;
 
-        return !isSelfId && !isSelfEmail && !isSelfUsername && !isSelfName;
+        return !isSelfId && !isSelfEmail && !isSelfUsername;
       })
       .map(u => {
         const rel = friendships.find(f => 
@@ -602,7 +601,7 @@ class SupabaseService {
           .eq('room_id', roomId)
           .order('created_at', { ascending: true });
 
-        if (!error && data && data.length > 0) {
+        if (!error && data && Array.isArray(data) && data.length > 0) {
           const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
           let updated = false;
 
@@ -622,6 +621,9 @@ class SupabaseService {
             if (idx === -1) {
               all.push(mappedMsg);
               updated = true;
+            } else {
+              all[idx] = mappedMsg;
+              updated = true;
             }
           });
 
@@ -631,7 +633,7 @@ class SupabaseService {
           return all.filter(m => m.room_id === roomId);
         }
       } catch (e) {
-        console.warn('[Supabase Cloud getChatHistoryAsync Exception]:', e);
+        console.info('[Supabase Cloud getChatHistoryAsync Fallback to Local]:', e.message || e);
       }
     }
 
@@ -754,10 +756,13 @@ class SupabaseService {
       messageObj.read = false;
     }
     const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
-    if (!all.some(m => m.id === messageObj.id)) {
+    const existingIdx = all.findIndex(m => m.id === messageObj.id);
+    if (existingIdx === -1) {
       all.push(messageObj);
-      localStorage.setItem('chat_messages_db', JSON.stringify(all));
+    } else {
+      all[existingIdx] = messageObj;
     }
+    localStorage.setItem('chat_messages_db', JSON.stringify(all));
 
     if (this.client) {
       try {
@@ -772,34 +777,31 @@ class SupabaseService {
           read: messageObj.read || false
         }], { onConflict: 'id' });
       } catch (e) {
-        console.warn('[Supabase Cloud saveChatMessage Notice]:', e);
+        console.info('[Supabase Cloud saveChatMessage Notice]:', e.message || e);
       }
     }
 
     this.updateSidebarBadges();
 
     if (this.activeChatChannel) {
-      await this.activeChatChannel.send({
-        type: 'broadcast',
-        event: 'new-chat-message',
-        payload: messageObj
-      });
+      try {
+        await this.activeChatChannel.send({
+          type: 'broadcast',
+          event: 'new-chat-message',
+          payload: messageObj
+        });
+      } catch (e) {
+        console.warn('[Supabase Realtime Broadcast Exception]:', e);
+      }
     }
 
     if (this.client && messageObj.recipient_id) {
       try {
-        const recipientChannel = this.client.channel(`user_messages_${messageObj.recipient_id}`);
-        recipientChannel.subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
-            await recipientChannel.send({
-              type: 'broadcast',
-              event: 'new-user-message',
-              payload: messageObj
-            });
-            setTimeout(() => {
-              try { this.client.removeChannel(recipientChannel); } catch (err) {}
-            }, 2000);
-          }
+        const notifChan = this.client.channel(`user_messages_${messageObj.recipient_id}`);
+        await notifChan.send({
+          type: 'broadcast',
+          event: 'new-user-message',
+          payload: messageObj
         });
       } catch (e) {}
     }
@@ -808,17 +810,23 @@ class SupabaseService {
   subscribeChatRoom(roomId, onMessageCallback) {
     if (!this.client) return null;
 
-    if (this.activeChatChannel) {
-      this.client.removeChannel(this.activeChatChannel);
+    if (this.activeChatChannel && this.activeChatRoomId === roomId) {
+      return this.activeChatChannel;
     }
 
-    // self: false prevents echo back to sender (fixes message duplication!)
+    if (this.activeChatChannel) {
+      try {
+        this.client.removeChannel(this.activeChatChannel);
+      } catch (e) {}
+    }
+
+    this.activeChatRoomId = roomId;
     this.activeChatChannel = this.client.channel(`chat_${roomId}`, {
       config: { broadcast: { self: false } }
     });
 
     this.activeChatChannel.on('broadcast', { event: 'new-chat-message' }, payload => {
-      if (onMessageCallback && payload.payload) {
+      if (onMessageCallback && payload && payload.payload) {
         const incomingMsg = payload.payload;
 
         const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');

@@ -121,8 +121,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderMessageBubble(msg) {
-    const isMe = msg.sender_id === currentUserId;
-    const safeId = escape(msg.id || ("msg_" + Math.random()));
+    const isMe = msg.sender_id === currentUserId || (currentUser && currentUser.email && msg.sender_id === currentUser.email);
+    const rawId = msg.id || ("msg_" + Math.random().toString(36).substr(2, 9));
+    const safeId = escape(rawId);
     const safeText = escape(msg.text);
     const safeTime = escape(msg.timestamp || "Mới");
 
