@@ -1,0 +1,370 @@
+<!doctype html>
+<html class="light" lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Cuộc gọi Video | Sign Speak</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      try {
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                primary: "#0084FF",
+                background: "#FFFFFF",
+                surface: "#F0F2F5",
+                "on-surface": "#050505",
+                "on-surface-variant": "#65676B",
+                "outline-variant": "#E4E6EB",
+                error: "#FA3E3E",
+              },
+              borderRadius: {
+                DEFAULT: "0.25rem",
+                lg: "0.5rem",
+                xl: "16px",
+                full: "9999px",
+              },
+            },
+          },
+        };
+      } catch (_e) {}
+    </script>
+    <link rel="stylesheet" href="css/style.css" />
+
+    <!-- MediaPipe Hands CDN -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"
+      crossorigin="anonymous"
+    ></script>
+
+    <!-- Supabase JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Services & Modules -->
+    <script src="js/services/security_guard.js"></script>
+    <script src="js/services/supabase_client.js"></script>
+    <script src="js/services/global_call_listener.js"></script>
+    <script src="js/services/context_resolver.js"></script>
+    <script src="js/services/webrtc_service.js"></script>
+    <script src="js/services/tts_service.js"></script>
+    <script src="js/services/stt_service.js"></script>
+    <script src="js/cv/feature_extractor.js"></script>
+    <script src="js/cv/dtw_classifier.js"></script>
+    <script src="js/call_controller.js"></script>
+  </head>
+  <body
+    class="bg-background text-on-surface h-screen flex flex-col overflow-hidden"
+  >
+    <!-- Header -->
+    <header
+      class="flex justify-between items-center w-full px-6 h-16 border-b border-outline-variant bg-white shrink-0 z-10"
+    >
+      <div class="flex items-center gap-3">
+        <a
+          href="index.html"
+          class="p-2 hover:bg-surface rounded-full text-on-surface-variant transition-colors"
+          title="Quay về"
+        >
+          <span class="material-symbols-outlined">arrow_back</span>
+        </a>
+        <div class="flex flex-col">
+          <h1 class="text-base font-semibold">Cuộc gọi Video Sign Speak VSL</h1>
+          <div class="flex items-center gap-1.5">
+            <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+            <span
+              id="roomStatusLabel"
+              class="text-xs text-on-surface-variant font-medium tracking-wide"
+              >Đang kết nối WebRTC...</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button
+          id="switchSubtitleModeBtn"
+          class="px-3.5 py-1.5 rounded-full bg-surface text-primary border border-primary/20 text-xs font-bold hover:bg-primary/10 transition-all"
+        >
+          Glassmorphism Overlay 🔄
+        </button>
+        <button
+          id="toggleSidebarBtn"
+          class="px-3.5 py-1.5 rounded-full bg-surface text-slate-700 border border-slate-300 text-xs font-bold hover:bg-slate-100 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+          title="Ẩn/Hiện Nhật Ký & Chat"
+        >
+          <span class="material-symbols-outlined text-[18px]">view_sidebar</span>
+          <span id="toggleSidebarLabel">Nhật ký & Chat</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow flex w-full overflow-hidden bg-surface relative">
+      <!-- Left: Video Area (75% width, expands to 100% when sidebar is collapsed) -->
+      <section
+        id="videoSection"
+        class="w-[75%] h-full p-4 flex gap-4 relative transition-all duration-300"
+      >
+        <div class="flex-1 flex flex-col gap-4">
+          <!-- Remote User Video -->
+          <div
+            class="relative flex-1 video-container bg-black rounded-xl overflow-hidden shadow-md"
+          >
+            <video
+              id="remoteVideo"
+              autoplay
+              playsinline
+              class="w-full h-full object-cover absolute inset-0"
+            ></video>
+            <div class="absolute top-4 left-4 z-10">
+              <span
+                id="remoteUserName"
+                class="bg-black/60 backdrop-blur-sm px-3.5 py-1.5 rounded-lg text-sm font-semibold text-white border border-white/10 shadow-lg"
+                >Người Đối Diện</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <div class="flex-1 flex flex-col gap-4">
+          <!-- Self Video (Hardware GPU Stream 60 FPS Preview + Transparent Canvas Skeleton Overlay) -->
+          <div
+            class="relative flex-1 video-container bg-black rounded-xl overflow-hidden border-2 border-primary/20 shadow-md"
+          >
+            <div
+              id="localCanvasWrapper"
+              class="relative w-full h-full"
+            >
+              <video
+                id="webcamVideo"
+                autoplay
+                playsinline
+                muted
+                class="w-full h-full object-cover absolute inset-0 z-0"
+              ></video>
+              <canvas
+                id="localCanvas"
+                width="640"
+                height="480"
+                class="w-full h-full object-cover absolute inset-0 z-10 pointer-events-none"
+              ></canvas>
+            </div>
+
+            <div class="absolute top-4 left-4 z-10">
+              <span
+                class="bg-black/60 backdrop-blur-sm px-3.5 py-1.5 rounded-lg text-sm font-semibold text-white border border-white/10 shadow-lg"
+                >Bạn</span
+              >
+            </div>
+
+            <!-- LIVE PERFORMANCE DIAGNOSTIC HUD OVERLAY -->
+            <div
+              id="diagnosticHud"
+              class="absolute top-4 right-4 z-10 bg-black/80 border border-green-500/40 px-3 py-2 rounded-xl text-[11px] font-mono text-green-400 space-y-0.5 backdrop-blur-md shadow-xl"
+            >
+              <div class="flex items-center gap-2">
+                <span>Cam:</span>
+                <span id="hudCamFps" class="font-bold text-white">60 FPS</span>
+                <span>|</span>
+                <span>AI Latency:</span>
+                <span id="hudAiMs" class="font-bold text-sky-400">12ms</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span>Tay:</span>
+                <span id="hudHandCount" class="font-bold text-amber-300"
+                  >0 tay</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating Glassmorphism Subtitle Overlay -->
+        <div
+          id="subtitleOverlay"
+          class="absolute bottom-6 left-4 w-[calc(100%-2rem)] px-6 z-20 pointer-events-none"
+        >
+          <div
+            class="glass-caption rounded-2xl p-4 text-center messenger-shadow border border-white/30 max-w-2xl mx-auto"
+          >
+            <p
+              class="text-lg font-bold text-white leading-relaxed drop-shadow-md"
+            >
+              <span id="subtitleText"
+                >Đang lắng nghe cử chỉ VSL và giọng nói...</span
+              >
+              <span
+                id="subtitleConfidence"
+                class="text-xs text-sky-300 font-mono ml-2"
+                >(VSL: 94%)</span
+              >
+            </p>
+          </div>
+        </div>
+
+        <!-- Fixed Subtitle Bar (Mode 2) -->
+        <div
+          id="fixedSubtitleBar"
+          class="hidden absolute bottom-0 left-0 right-0 bg-black/90 p-4 text-center border-t border-outline-variant z-20"
+        >
+          <span
+            class="text-slate-400 text-xs font-semibold uppercase block mb-1"
+            >Băng Chuyền Phụ Đề Live:</span
+          >
+          <p id="fixedSubtitleText" class="text-sky-300 text-lg font-bold">
+            Đang sẵn sàng...
+          </p>
+        </div>
+      </section>
+
+      <!-- Right: Transcript Log & Realtime Chat (25% width, toggleable) -->
+      <aside
+        id="transcriptSidebar"
+        class="w-[25%] h-full bg-slate-50/50 dark:bg-[#1e2942] border-l border-slate-200/80 dark:border-slate-800 flex flex-col messenger-shadow transition-all duration-300"
+      >
+        <div
+          class="p-4 border-b border-slate-200/80 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-[#151e32] shrink-0"
+        >
+          <h2 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px] text-primary">chat</span>
+            <span>Nhật ký & Chat VSL</span>
+          </h2>
+        </div>
+
+        <!-- Live Messages & Translation Stream -->
+        <div
+          id="transcriptList"
+          class="flex-grow overflow-y-auto p-4 space-y-3.5 bg-slate-50/50 dark:bg-[#1e2942]"
+        >
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center gap-2 px-1">
+              <span
+                class="text-[10px] font-bold text-primary tracking-tight uppercase"
+                >HỆ THỐNG VSL</span
+              >
+              <span class="text-[10px] text-slate-500 dark:text-slate-400 font-medium"
+                >Hệ thống</span
+              >
+            </div>
+            <div
+              class="bg-white dark:bg-[#151e32] rounded-2xl px-3.5 py-2 max-w-[95%] self-start messenger-shadow border border-slate-200/80 dark:border-slate-700/80"
+            >
+              <p class="text-xs leading-relaxed text-slate-900 dark:text-white">
+                Đã kết nối cuộc gọi Video VSL và sẵn sàng suy luận cử chỉ Realtime.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Realtime Inline Chat Input Form -->
+        <form
+          id="callChatForm"
+          class="p-3 bg-white dark:bg-[#151e32] border-t border-slate-200/80 dark:border-slate-800 flex items-center gap-2 shrink-0"
+        >
+          <input
+            id="callChatInput"
+            type="text"
+            placeholder="Nhập tin nhắn..."
+            class="flex-grow py-2 px-3.5 bg-slate-100/80 dark:bg-[#1e2942] border border-slate-200/80 dark:border-slate-700 rounded-full text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:bg-white dark:focus:bg-[#1e2942] placeholder:text-slate-400 transition-all"
+            autocomplete="off"
+          />
+          <button
+            id="sendCallChatBtn"
+            type="submit"
+            class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-all shrink-0 cursor-pointer"
+            title="Gửi tin nhắn"
+          >
+            <span class="material-symbols-outlined text-[16px]">send</span>
+          </button>
+        </form>
+      </aside>
+    </main>
+
+    <!-- Bottom Control Bar -->
+    <footer
+      class="relative z-30 flex justify-center items-center w-full bg-white border-t border-outline-variant py-3 px-6 gap-4"
+    >
+      <div class="flex items-center gap-4 px-6 py-1 rounded-full">
+        <!-- Controls Center -->
+        <div class="flex items-center gap-3">
+          <!-- Mic Toggle -->
+          <button
+            id="toggleMicBtn"
+            class="w-12 h-12 flex items-center justify-center rounded-full bg-surface text-on-surface-variant hover:bg-outline-variant transition-all active:scale-95 shadow-sm"
+            title="Micro"
+          >
+            <span class="material-symbols-outlined text-[24px]">mic</span>
+          </button>
+
+          <!-- Cam Toggle -->
+          <button
+            id="toggleCamBtn"
+            class="w-12 h-12 flex items-center justify-center rounded-full bg-surface text-on-surface-variant hover:bg-outline-variant transition-all active:scale-95 shadow-sm"
+            title="Camera"
+          >
+            <span class="material-symbols-outlined text-[24px]">videocam</span>
+          </button>
+
+          <!-- Flip Mirror Toggle -->
+          <button
+            id="toggleMirrorBtn"
+            class="w-12 h-12 flex items-center justify-center rounded-full bg-surface text-primary hover:bg-primary/10 transition-all active:scale-95 shadow-sm"
+            title="Đảo chiều Cam"
+          >
+            <span class="material-symbols-outlined text-[24px]"
+              >flip_camera_ios</span
+            >
+          </button>
+
+          <!-- STT Toggle -->
+          <button
+            id="toggleSTTBtn"
+            class="w-12 h-12 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-all active:scale-95 shadow-sm"
+            title="Speech-to-Text"
+          >
+            <span class="material-symbols-outlined text-[24px]"
+              >interpreter_mode</span
+            >
+          </button>
+
+          <!-- TTS AI Voice Toggle -->
+          <button
+            id="toggleTTSBtn"
+            class="w-12 h-12 flex items-center justify-center rounded-full bg-surface text-primary hover:bg-primary/10 transition-all active:scale-95 shadow-sm"
+            title="Tắt/Bật giọng đọc AI dịch cử chỉ"
+          >
+            <span class="material-symbols-outlined text-[24px]">volume_up</span>
+          </button>
+
+          <!-- End Call Button -->
+          <a
+            href="contacts.html"
+            id="endCallBtn"
+            class="w-16 h-12 flex items-center justify-center rounded-3xl bg-error text-white hover:opacity-90 transition-all active:scale-95 messenger-shadow shadow-red-500/30"
+            title="Kết thúc cuộc gọi"
+          >
+            <span class="material-symbols-outlined text-[28px]">call_end</span>
+          </a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

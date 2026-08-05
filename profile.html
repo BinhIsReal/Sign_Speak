@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="vi" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem("app_theme") === "dark")
+            document.documentElement.classList.add("dark");
+          if (localStorage.getItem("sidebar_collapsed") === "true")
+            document.documentElement.classList.add("sidebar-collapsed-root");
+        } catch (e) {}
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hồ sơ cá nhân | Sign Speak</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      try {
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "on-tertiary": "#ffffff",
+                "surface-container-high": "#e5e8f2",
+                surface: "#f8fafc",
+                "on-primary": "#ffffff",
+                "tertiary-fixed-dim": "#6dd2ff",
+                "on-surface": "#0f172a",
+                primary: "#005bb3",
+                "surface-variant": "#e2e8f0",
+                "on-surface-variant": "#64748b",
+                "on-secondary-container": "#fff6ff",
+                "surface-container-highest": "#e2e8f0",
+                "surface-container": "#f1f5f9",
+                "tertiary-fixed": "#bfe9ff",
+                "surface-container-low": "#f8fafc",
+                outline: "#717786",
+                "inverse-surface": "#2d3038",
+                "inverse-primary": "#a9c7ff",
+                "surface-tint": "#005db7",
+                error: "#ba1a1a",
+                "on-tertiary-fixed": "#001f2a",
+                "error-container": "#ffdad6",
+                tertiary: "#006482",
+                "on-primary-fixed": "#001b3d",
+                "tertiary-container": "#007ea4",
+                secondary: "#8300de",
+                background: "#f8fafc",
+                "on-tertiary-container": "#fbfdff",
+                "surface-container-lowest": "#ffffff",
+                "on-error-container": "#93000a",
+                "primary-container": "#0073df",
+                "secondary-fixed": "#f0dbff",
+                "on-tertiary-fixed-variant": "#004d65",
+                "primary-fixed": "#d6e3ff",
+                "on-primary-fixed-variant": "#00468c",
+                "on-background": "#0f172a",
+                "on-primary-container": "#fefcff",
+                "inverse-on-surface": "#eef0fb",
+                "surface-bright": "#f8fafc",
+                "secondary-fixed-dim": "#ddb7ff",
+                "surface-dim": "#d7dae4",
+                "secondary-container": "#9f32fe",
+                "on-error": "#ffffff",
+                "primary-fixed-dim": "#a9c7ff",
+                "outline-variant": "#c0c6d6",
+                "on-secondary-fixed": "#2c0050",
+                "on-secondary-fixed-variant": "#6900b3",
+                "on-secondary": "#ffffff",
+              },
+              borderRadius: {
+                DEFAULT: "0.25rem",
+                lg: "0.5rem",
+                xl: "1rem",
+                full: "9999px",
+              },
+              fontFamily: {
+                "label-md": ["Outfit"],
+                "headline-md": ["Outfit"],
+                "headline-lg": ["Outfit"],
+                display: ["Outfit"],
+                caption: ["Outfit"],
+                "body-md": ["Outfit"],
+                "body-lg": ["Outfit"],
+              },
+            },
+          },
+        };
+      } catch (_e) {}
+    </script>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="js/services/security_guard.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/services/supabase_client.js"></script>
+    <script src="js/services/global_call_listener.js"></script>
+    <script src="js/profile_controller.js"></script>
+  </head>
+  <body
+    class="flex min-h-screen overflow-hidden bg-background text-on-background antialiased"
+  >
+    <!-- Left Navigation Sidebar -->
+    <nav
+      class="fixed left-0 top-0 bottom-0 flex flex-col z-40 h-screen w-64 flex-shrink-0 bg-white border-r border-slate-200/80 messenger-shadow"
+    >
+      <!-- Top Brand & Status -->
+      <div class="p-6 flex items-center justify-between">
+        <div class="sidebar-text-group flex flex-col gap-1">
+          <a
+            href="hub.html"
+            class="text-2xl font-bold text-primary tracking-tight"
+            >Sign Speak</a
+          >
+          <div class="flex items-center gap-2 mt-1">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#31a24c]"></span>
+            <p class="text-xs font-semibold text-slate-500">Active</p>
+          </div>
+        </div>
+        <button
+          id="toggleSidebarCollapseBtn"
+          class="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center cursor-pointer shrink-0"
+          title="Thu gọn / Mở rộng Sidebar"
+        >
+          <span
+            class="material-symbols-outlined text-[22px]"
+            id="sidebarCollapseIcon"
+            >menu_open</span
+          >
+        </button>
+      </div>
+
+      <!-- Main Menu Links -->
+      <div class="mt-2 px-4 flex flex-col gap-1.5 flex-grow">
+        <!-- Messages Tab -->
+        <a
+          href="index.html"
+          class="relative flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 hover:bg-slate-100/80 hover:text-primary transition-all group"
+        >
+          <div class="flex items-center gap-3.5">
+            <span
+              class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform"
+              data-icon="chat"
+              >chat</span
+            >
+            <span class="text-sm font-medium">Messages</span>
+          </div>
+          <span id="sidebarMessagesBadge" class="nav-badge hidden">0</span>
+        </a>
+        <!-- Contacts Tab -->
+        <a
+          href="contacts.html"
+          class="relative flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 hover:bg-slate-100/80 hover:text-primary transition-all group"
+        >
+          <div class="flex items-center gap-3.5">
+            <span
+              class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform"
+              data-icon="contacts"
+              >contacts</span
+            >
+            <span class="text-sm font-medium">Contacts</span>
+          </div>
+          <span id="sidebarContactsBadge" class="nav-badge hidden">0</span>
+        </a>
+        <!-- Settings Tab -->
+        <a
+          href="settings.html"
+          class="flex items-center gap-3.5 px-4 py-3 rounded-2xl text-slate-600 hover:bg-slate-100/80 hover:text-primary transition-all group"
+        >
+          <span
+            class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform"
+            data-icon="settings"
+            >settings</span
+          >
+          <span class="text-sm font-medium">Settings</span>
+        </a>
+
+        <!-- Floating Action Button -->
+        <a
+          href="call.html"
+          class="mt-6 mx-1 flex items-center justify-center gap-2 bg-primary text-white rounded-full py-3.5 px-4 shadow-lg shadow-primary/25 active:scale-95 duration-200 hover:brightness-110"
+        >
+          <span class="material-symbols-outlined text-[20px]">add</span>
+          <span class="text-sm font-bold tracking-wide">Soạn tin mới</span>
+        </a>
+      </div>
+
+      <!-- Bottom Fixed Section -->
+      <div class="p-4 border-t border-slate-100 flex flex-col gap-1">
+        <a
+          href="settings.html"
+          class="flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-primary transition-all text-xs font-semibold"
+        >
+          <span
+            class="material-symbols-outlined text-[20px]"
+            data-icon="accessibility_new"
+            >accessibility_new</span
+          >
+          <span>Accessibility</span>
+        </a>
+        <a
+          href="gesture_collector.html"
+          class="flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-primary transition-all text-xs font-semibold"
+        >
+          <span class="material-symbols-outlined text-[20px]" data-icon="help"
+            >help</span
+          >
+          <span>Help / Collector</span>
+        </a>
+
+        <!-- User Profile Link at Bottom - Active -->
+        <a
+          id="sidebarProfileLink"
+          href="profile.html"
+          class="mt-2 flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-primary/10 border-r-4 border-primary transition-all shadow-sm"
+        >
+          <div
+            id="sidebarUserAvatar"
+            class="w-10 h-10 rounded-full bg-primary text-white font-bold flex items-center justify-center shrink-0 text-sm shadow-sm"
+          >
+            --
+          </div>
+          <div class="flex flex-col min-w-0">
+            <span
+              id="sidebarUserName"
+              class="text-xs font-bold text-primary truncate"
+              >Đang tải...</span
+            >
+            <span class="text-[11px] text-primary/80 font-medium truncate"
+              >Tài khoản cá nhân</span
+            >
+          </div>
+        </a>
+      </div>
+    </nav>
+
+    <!-- Main Content Canvas -->
+    <main
+      class="ml-64 flex-1 flex flex-col h-screen overflow-hidden bg-slate-50/50"
+    >
+      <!-- TopAppBar -->
+      <header
+        class="flex justify-between items-center w-full px-8 h-16 bg-white border-b border-slate-200/80 messenger-shadow shrink-0 z-10"
+      >
+        <div class="flex items-center gap-4">
+          <h2 class="text-lg font-bold text-slate-900 tracking-tight">
+            Hồ sơ cá nhân Sign Speak
+          </h2>
+        </div>
+        <div class="flex items-center gap-4">
+          <a
+            href="index.html"
+            class="px-5 py-2 bg-slate-100 text-slate-700 hover:bg-primary hover:text-white rounded-full text-xs font-bold transition-all shadow-sm"
+          >
+            Trang Chủ
+          </a>
+        </div>
+      </header>
+
+      <!-- Profile Content Scroll Area -->
+      <div class="flex-1 overflow-y-auto p-8 space-y-8">
+        <div class="max-w-5xl mx-auto space-y-8">
+          <!-- Header Hero Banner Card -->
+          <section
+            class="bg-gradient-to-r from-primary/95 to-primary-container text-white p-8 rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden"
+          >
+            <div class="flex items-center gap-6 z-10">
+              <div class="relative">
+                <div
+                  id="userAvatarInitial"
+                  class="w-24 h-24 rounded-full bg-white text-primary font-extrabold text-3xl flex items-center justify-center shadow-lg border-4 border-white/30"
+                >
+                  NA
+                </div>
+                <span
+                  class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-emerald-400 border-2 border-white"
+                ></span>
+              </div>
+              <div class="space-y-1.5">
+                <div class="flex items-center gap-3">
+                  <h1
+                    id="profileDisplayName"
+                    class="text-2xl font-extrabold tracking-tight"
+                  >
+                    Nguyễn Văn An
+                  </h1>
+                  <div id="profileRoleBadge">
+                    <span
+                      class="px-3 py-1 rounded-full bg-white/20 text-white font-bold text-xs backdrop-blur-md"
+                    >
+                      Người Khiếm Thính (VSL)</span
+                    >
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span
+                    id="profileUsernameDisplay"
+                    class="font-mono text-xs font-bold px-2.5 py-1 bg-white/20 rounded-full text-white border border-white/30"
+                    >@user84729</span
+                  >
+                  <span
+                    id="profileEmailDisplay"
+                    class="text-sm text-white/80 font-medium"
+                    >nguyen.an@signspeak.com</span
+                  >
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Content Grid -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left 2-Cols: Edit Personal Info Form -->
+            <section
+              class="lg:col-span-2 bg-white p-7 rounded-3xl border border-slate-200/80 shadow-sm space-y-6"
+            >
+              <div
+                class="flex items-center gap-3 pb-4 border-b border-slate-100"
+              >
+                <div
+                  class="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold"
+                >
+                  <span
+                    class="material-symbols-outlined text-[22px]"
+                    data-icon="edit"
+                    >edit</span
+                  >
+                </div>
+                <div>
+                  <h3 class="text-base font-bold text-slate-900">
+                    Thông tin cá nhân
+                  </h3>
+                  <p class="text-xs text-slate-500">
+                    Cập nhật họ tên, vai trò và số điện thoại liên hệ
+                  </p>
+                </div>
+              </div>
+
+              <form id="profileForm" class="space-y-5">
+                <div class="space-y-1.5">
+                  <label
+                    class="block text-xs font-bold text-slate-700"
+                    for="fullNameInput"
+                    >Họ và tên hiển thị</label
+                  >
+                  <input
+                    id="fullNameInput"
+                    type="text"
+                    required
+                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                    placeholder="Nhập họ và tên..."
+                  />
+                </div>
+
+                <!-- ID Name (@username) Input Field -->
+                <div class="space-y-1.5">
+                  <div class="flex justify-between items-center">
+                    <label
+                      class="block text-xs font-bold text-slate-700"
+                      for="usernameInput"
+                      >ID Name (Tên người dùng duy nhất)</label
+                    >
+                    <span
+                      id="usernameFormattedPreview"
+                      class="text-xs font-mono font-bold text-primary"
+                    ></span>
+                  </div>
+                  <div class="relative flex items-center">
+                    <span
+                      class="absolute left-4 text-slate-400 font-mono font-bold text-sm select-none"
+                      >@</span
+                    >
+                    <input
+                      id="usernameInput"
+                      type="text"
+                      maxlength="15"
+                      class="w-full pl-8 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                      placeholder="user84729"
+                    />
+                  </div>
+                  <div
+                    id="usernameCooldownNotice"
+                    class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-xs font-medium"
+                  >
+                    💡 Mã định danh dùng để kết bạn và tìm kiếm. Hệ thống tự
+                    động gắn dấu <strong class="text-primary">@</strong>. Hạn
+                    chế đổi 14 ngày/lần.
+                  </div>
+                </div>
+
+                <div class="space-y-1.5">
+                  <label
+                    class="block text-xs font-bold text-slate-700"
+                    for="emailInput"
+                    >Địa chỉ Email (Cố định)</label
+                  >
+                  <input
+                    id="emailInput"
+                    type="email"
+                    readonly
+                    class="w-full px-4 py-3 bg-slate-100/70 border border-slate-200/80 rounded-2xl text-sm text-slate-500 cursor-not-allowed"
+                  />
+                </div>
+
+                <div class="space-y-1.5">
+                  <label
+                    class="block text-xs font-bold text-slate-700"
+                    for="phoneInput"
+                    >Số điện thoại liên hệ</label
+                  >
+                  <input
+                    id="phoneInput"
+                    type="tel"
+                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                    placeholder="**********"
+                  />
+                </div>
+
+                <div class="space-y-1.5">
+                  <label
+                    class="block text-xs font-bold text-slate-700"
+                    for="roleSelect"
+                    >Vai trò giao tiếp mặc định</label
+                  >
+                  <select
+                    id="roleSelect"
+                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                  >
+                    <option value="deaf">
+                      Người Khiếm Thính (Chủ yếu dùng Ngôn ngữ ký hiệu VSL)
+                    </option>
+                    <option value="hearing">
+                      Người Nghe Nói (Chủ yếu dùng Giọng nói & Phụ đề)
+                    </option>
+                  </select>
+                </div>
+
+                <div id="saveMsg" class="hidden"></div>
+
+                <button
+                  type="submit"
+                  class="w-full py-3.5 bg-primary text-white rounded-2xl font-bold text-sm shadow-md shadow-primary/20 hover:bg-primary-container active:scale-95 transition-all"
+                >
+                  💾 Lưu thay đổi hồ sơ
+                </button>
+              </form>
+            </section>
+
+            <!-- Right 1-Col: Account Security & Statistics -->
+            <div class="space-y-6">
+              <!-- Card 1: Communication Stats -->
+              <section
+                class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4"
+              >
+                <h3
+                  class="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2"
+                >
+                  <span class="material-symbols-outlined text-primary text-base"
+                    >analytics</span
+                  >
+                  <span>Thống kê giao tiếp VSL</span>
+                </h3>
+                <div class="space-y-3">
+                  <div
+                    class="flex justify-between items-center text-xs p-3 bg-slate-50 rounded-2xl"
+                  >
+                    <span class="text-slate-600 font-medium"
+                      >Tổng thời gian cuộc gọi:</span
+                    >
+                    <span class="font-bold text-primary">14 giờ 25 phút</span>
+                  </div>
+                  <div
+                    class="flex justify-between items-center text-xs p-3 bg-slate-50 rounded-2xl"
+                  >
+                    <span class="text-slate-600 font-medium"
+                      >Số cử chỉ VSL đã dịch:</span
+                    >
+                    <span class="font-bold text-primary">1,420 từ</span>
+                  </div>
+                  <div
+                    class="flex justify-between items-center text-xs p-3 bg-slate-50 rounded-2xl"
+                  >
+                    <span class="text-slate-600 font-medium"
+                      >Độ trễ AI trung bình:</span
+                    >
+                    <span class="font-bold text-emerald-600"
+                      >&lt; 15ms (DTW Continuous)</span
+                    >
+                  </div>
+                </div>
+              </section>
+
+              <!-- Card 2: Security & Actions -->
+              <section
+                class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4"
+              >
+                <h3
+                  class="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2"
+                >
+                  <span class="material-symbols-outlined text-primary text-base"
+                    >lock</span
+                  >
+                  <span>Bảo mật & Phiên đăng nhập</span>
+                </h3>
+                <div class="space-y-2.5">
+                  <button
+                    id="logoutBtn"
+                    class="w-full py-3 rounded-2xl text-xs font-bold active:scale-95 transition-all flex items-center justify-center gap-2 shadow-md shadow-rose-500/20 hover:brightness-110"
+                    style="background-color: rgb(223, 24, 68); color: #ffffff"
+                  >
+                    <span class="material-symbols-outlined text-[18px]"
+                      >logout</span
+                    >
+                    <span>Đăng xuất tài khoản</span>
+                  </button>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

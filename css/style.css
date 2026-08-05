@@ -1,0 +1,588 @@
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 · genre: modern-minimal · theme: Messenger-Web */
+/* Sign_Speak Core Design System & Custom Styles (Messenger Web Theme) */
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap");
+
+:root {
+  --bg-primary: #f8fafc;
+  --bg-card: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --accent-blue: #005bb3;
+  --accent-blue-hover: #00468c;
+  --border-light: #e2e8f0;
+  --font-base: 16px;
+}
+
+/* Sidebar & Item Notification Badges (Red dot with unread number) */
+.nav-badge {
+  background-color: #ef4444;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.4);
+  line-height: 1;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  shrink: 0;
+}
+
+.nav-badge.hidden {
+  display: none !important;
+}
+
+html.sidebar-collapsed-root nav.fixed.left-0 span.nav-badge,
+body.sidebar-collapsed nav.fixed.left-0 span.nav-badge {
+  display: inline-flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  width: auto !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  font-size: 10px !important;
+  padding: 0 4px !important;
+  position: absolute !important;
+  top: 4px !important;
+  right: 10px !important;
+  z-index: 50 !important;
+}
+
+body {
+  font-family: "Outfit", sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  min-height: 100vh;
+  font-size: var(--font-base);
+}
+
+/* Accessibility Contrast Modes */
+body.contrast-high {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+body.contrast-high .glass-card,
+body.contrast-high .messenger-card,
+body.contrast-high .messenger-sidebar {
+  background-color: #111111 !important;
+  color: #ffffff !important;
+  border: 2px solid #ffffff !important;
+}
+
+body.contrast-high .text-slate-500,
+body.contrast-high .text-slate-400,
+body.contrast-high .text-slate-600 {
+  color: #e2e8f0 !important;
+}
+
+body.font-size-small {
+  var-font-base: 14px;
+  font-size: 14px;
+}
+body.font-size-large {
+  var-font-base: 19px;
+  font-size: 19px;
+}
+
+/* Messenger Web Glassmorphism & Card Components */
+.glass-card,
+.messenger-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.03),
+    0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.messenger-sidebar {
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+}
+
+/* Messenger Primary Buttons */
+.gradient-btn,
+.messenger-btn-primary {
+  background-color: var(--accent-blue);
+  color: #ffffff;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gradient-btn:hover,
+.messenger-btn-primary:hover {
+  background-color: var(--accent-blue-hover);
+  box-shadow: 0 4px 14px rgba(0, 91, 179, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Video Subtitle Modes (Messenger Floating Glassmorphic Overlay) */
+.subtitle-overlay {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  padding: 12px 28px;
+  border-radius: 9999px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  z-index: 40;
+  max-width: 90%;
+  text-align: center;
+  color: #ffffff;
+}
+
+.subtitle-fixed-bar {
+  position: relative;
+  width: 100%;
+  background: #0f172a;
+  border-top: 2px solid #1e293b;
+  padding: 16px;
+  border-radius: 0 0 16px 16px;
+  text-align: center;
+  color: #ffffff;
+}
+
+/* Webcam Mirror Flip */
+.mirror-mode,
+.video-mirror {
+  transform: scaleX(-1);
+  -webkit-transform: scaleX(-1);
+}
+
+/* Smooth Messenger Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Layout & Sidebar Transitions */
+.sidebar-transition {
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.content-transition {
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Glass Panel & Login/Liquid Gradients */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 91, 179, 0.12);
+}
+.login-gradient {
+  background: linear-gradient(135deg, #005bb3 0%, #8300de 100%);
+}
+.liquid-bg {
+  background: linear-gradient(135deg, #005bb3 0%, #8300de 100%);
+  position: relative;
+  overflow: hidden;
+}
+.glass-caption {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(16px);
+}
+.messenger-shadow {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+.material-symbols-outlined {
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 24;
+}
+
+/* ---------------------------------------------------- */
+/* PREMIUM HIGH-CONTRAST DARK MODE ENGINE (html.dark) */
+/* Inspired by Messenger Web, Discord & Apple Dark Modes */
+/* ---------------------------------------------------- */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0b1120 !important;
+  color: #f8fafc !important;
+}
+
+html.dark nav,
+html.dark header,
+html.dark aside,
+html.dark footer,
+html.dark section.bg-white,
+html.dark div.bg-white {
+  background-color: #151e32 !important;
+  border-color: #243350 !important;
+  color: #f8fafc !important;
+}
+
+html.dark main,
+html.dark div.bg-slate-50\/50,
+html.dark div.bg-slate-50 {
+  background-color: #0b1120 !important;
+  border-color: #243350 !important;
+}
+
+html.dark div.bg-slate-50\/80,
+html.dark div.bg-slate-100\/70,
+html.dark div.bg-slate-100\/80,
+html.dark div.bg-slate-100 {
+  background-color: #1e2942 !important;
+  border-color: #243350 !important;
+}
+
+/* High Contrast Title Typography */
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark h5,
+html.dark h6,
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+html.dark .text-slate-700,
+html.dark .text-on-surface {
+  color: #ffffff !important;
+}
+
+/* Subtitles & Descriptions - Crisp Light Slate Blue 300 for 100% Legibility */
+html.dark .text-slate-500,
+html.dark .text-slate-600,
+html.dark .text-slate-400,
+html.dark .text-on-surface-variant {
+  color: #cbd5e1 !important;
+}
+
+/* Vibrant Sky Blue Accent Colors in Dark Mode */
+html.dark .text-primary {
+  color: #ffffff !important;
+}
+
+html.dark .bg-primary\/10 {
+  background-color: rgba(56, 189, 248, 0.15) !important;
+}
+
+html.dark .border-primary {
+  border-color: #38bdf8 !important;
+}
+
+/* High Contrast Inputs, Selects & Textareas */
+html.dark input[type="text"],
+html.dark input[type="password"],
+html.dark input[type="email"],
+html.dark input[type="tel"],
+html.dark input[type="number"],
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: #1e2942 !important;
+  color: #ffffff !important;
+  border-color: #334155 !important;
+}
+
+html.dark input::placeholder {
+  color: #94a3b8 !important;
+}
+
+#logoutBtn {
+  background-color: rgb(223, 24, 68) !important;
+  color: #ffffff !important;
+}
+
+/* Navigation & Action Buttons in Dark Mode */
+html.dark .bg-slate-100,
+html.dark a.bg-slate-100,
+html.dark button.bg-slate-100 {
+  background-color: #1e2942 !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155 !important;
+}
+
+html.dark #toggleSidebarBtn {
+  background-color: #1e2942 !important;
+  color: #ffffff !important;
+  border-color: #334155 !important;
+}
+
+html.dark #switchSubtitleModeBtn {
+  background-color: #1e2942 !important;
+  color: #38bdf8 !important;
+  border-color: #334155 !important;
+}
+
+/* Chat Bubble Container & Stream Overrides */
+html.dark .bg-surface,
+html.dark #chatStream,
+html.dark .chat-content-stream {
+  background-color: #1e2942 !important;
+  border-color: #334155 !important;
+  color: #ffffff !important;
+}
+
+/* Borders */
+html.dark .border-slate-100,
+html.dark .border-slate-200\/80,
+html.dark .border-slate-200\/60,
+html.dark .border-slate-200\/50,
+html.dark .border-slate-200,
+html.dark .border-outline-variant {
+  border-color: #243350 !important;
+}
+
+/* Custom User-Requested Dark Mode Hover & Background Overrides */
+html.dark .bg-slate-200 {
+  background-color: rgb(110 110 110) !important;
+}
+
+html.dark .hover\:bg-slate-100\/80:hover,
+html.dark .hover\:bg-slate-100\/70:hover,
+html.dark .hover\:bg-slate-100:hover,
+html.dark a.hover\:bg-slate-100\/80:hover,
+html.dark button.hover\:bg-slate-100\/80:hover,
+html.dark div.hover\:bg-slate-100\/80:hover,
+html.dark a.hover\:bg-slate-100:hover,
+html.dark button.hover\:bg-slate-100:hover,
+html.dark div.hover\:bg-slate-100:hover {
+  background-color: rgb(23 63 103 / 80%) !important;
+}
+
+/* Universal Checkbox Styling (White Background, Dark Navy Checkmark #0f172a) */
+input[type="checkbox"],
+html.dark input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.15rem !important;
+  height: 1.15rem !important;
+  background-color: #ffffff !important;
+  border: 2px solid #94a3b8 !important;
+  border-radius: 0.375rem !important;
+  display: inline-grid !important;
+  place-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease-in-out !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+  flex-shrink: 0 !important;
+}
+
+input[type="checkbox"]::before,
+html.dark input[type="checkbox"]::before {
+  content: "" !important;
+  width: 0.65rem !important;
+  height: 0.65rem !important;
+  transform: scale(0) !important;
+  transition: 120ms transform ease-in-out !important;
+  background-color: #0f172a !important; /* Dark Navy Blue checkmark */
+  transform-origin: center !important;
+  clip-path: polygon(
+    14% 44%,
+    0 65%,
+    50% 100%,
+    100% 16%,
+    80% 0%,
+    43% 62%
+  ) !important;
+}
+
+input[type="checkbox"]:checked::before,
+html.dark input[type="checkbox"]:checked::before {
+  transform: scale(1) !important;
+}
+
+/* High Contrast Feature Cards in Login & Register Left Banner */
+.liquid-bg .glass-panel,
+.login-gradient .glass-panel,
+html.dark .liquid-bg .glass-panel,
+html.dark .login-gradient .glass-panel {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2) !important;
+}
+
+.liquid-bg .glass-panel *,
+.login-gradient .glass-panel * {
+  color: #0f172a !important; /* Pure Dark Slate text */
+}
+
+.liquid-bg .glass-panel .text-caption,
+.liquid-bg .glass-panel .text-on-surface-variant,
+.login-gradient .glass-panel .text-caption,
+.login-gradient .glass-panel .text-on-surface-variant {
+  color: #475569 !important; /* Muted Slate Subtitle */
+}
+
+.liquid-bg .glass-panel .material-symbols-outlined,
+.login-gradient .glass-panel .material-symbols-outlined {
+  color: #005bb3 !important;
+}
+
+/* ---------------------------------------------------- */
+/* MODERN MINIMAL OUTLINED ICON STYLE */
+/* ---------------------------------------------------- */
+.material-symbols-outlined {
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 350,
+    "GRAD" 0,
+    "opsz" 24 !important;
+}
+
+/* ---------------------------------------------------- */
+/* INSTANT COLLAPSIBLE SIDEBAR ENGINE (Icon Only Mode) */
+/* ---------------------------------------------------- */
+nav.fixed.left-0 {
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+main {
+  transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Collapsed Sidebar State - Scope ONLY to Left Navigation Sidebar (nav.fixed.left-0) */
+html.sidebar-collapsed-root nav.fixed.left-0,
+body.sidebar-collapsed nav.fixed.left-0 {
+  width: 5rem !important; /* 80px */
+}
+
+html.sidebar-collapsed-root main.ml-64,
+body.sidebar-collapsed main.ml-64 {
+  margin-left: 5rem !important; /* 80px */
+}
+
+/* Hide text ONLY inside Left Navigation Sidebar (nav.fixed.left-0) */
+html.sidebar-collapsed-root nav.fixed.left-0 .sidebar-label,
+html.sidebar-collapsed-root nav.fixed.left-0 .sidebar-text-group,
+html.sidebar-collapsed-root
+  nav.fixed.left-0
+  span:not(.material-symbols-outlined),
+html.sidebar-collapsed-root nav.fixed.left-0 p,
+html.sidebar-collapsed-root nav.fixed.left-0 .flex-col.min-w-0,
+body.sidebar-collapsed nav.fixed.left-0 .sidebar-label,
+body.sidebar-collapsed nav.fixed.left-0 .sidebar-text-group,
+body.sidebar-collapsed nav.fixed.left-0 span:not(.material-symbols-outlined),
+body.sidebar-collapsed nav.fixed.left-0 p,
+body.sidebar-collapsed nav.fixed.left-0 .flex-col.min-w-0 {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Sidebar Top Padding & Center Alignment */
+html.sidebar-collapsed-root nav.fixed.left-0 .p-6,
+body.sidebar-collapsed nav.fixed.left-0 .p-6 {
+  padding: 1rem 0.5rem !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+/* Navigation Links Center Alignment */
+html.sidebar-collapsed-root nav.fixed.left-0 a,
+body.sidebar-collapsed nav.fixed.left-0 a {
+  justify-content: center !important;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+  gap: 0 !important;
+}
+
+html.sidebar-collapsed-root nav.fixed.left-0 a span.material-symbols-outlined,
+body.sidebar-collapsed nav.fixed.left-0 a span.material-symbols-outlined {
+  font-size: 24px !important;
+}
+
+/* Floating Action Button (Call / New Chat) ONLY inside Left Navigation Sidebar */
+html.sidebar-collapsed-root nav.fixed.left-0 a[href="call.html"],
+body.sidebar-collapsed nav.fixed.left-0 a[href="call.html"] {
+  width: 2.75rem !important;
+  height: 2.75rem !important;
+  padding: 0 !important;
+  margin: 1rem auto 0 auto !important;
+  border-radius: 9999px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Profile Link at Bottom ONLY inside Left Navigation Sidebar */
+html.sidebar-collapsed-root nav.fixed.left-0 #sidebarProfileLink,
+body.sidebar-collapsed nav.fixed.left-0 #sidebarProfileLink {
+  justify-content: center !important;
+  padding: 0.35rem !important;
+  margin-top: 0.5rem !important;
+  border-radius: 9999px !important;
+}
+
+/* Transcript Log & Realtime Chat Styling (Matches Chat Content Stream #chatStream) */
+#transcriptSidebar {
+  background-color: #f8fafc !important;
+}
+
+#transcriptSidebar > div:first-child,
+#callChatForm {
+  background-color: #ffffff !important;
+  border-color: rgba(226, 232, 240, 0.8) !important;
+}
+
+html.dark #transcriptSidebar,
+html.dark #transcriptList {
+  background-color: #1e2942 !important;
+  border-color: rgba(30, 41, 59, 0.8) !important;
+}
+
+html.dark #transcriptSidebar > div:first-child,
+html.dark #callChatForm {
+  background-color: #151e32 !important;
+  border-color: #1e2942 !important;
+}
+
+html.dark #callChatInput {
+  background-color: #1e2942 !important;
+  border-color: #334155 !important;
+  color: #ffffff !important;
+}
+
+html.dark #transcriptList .bg-surface,
+html.dark #transcriptList .transcript-msg-bubble {
+  background-color: #151e32 !important;
+  border-color: rgba(51, 65, 85, 0.8) !important;
+  color: #ffffff !important;
+}
+
+#notifDropdown {
+  width: 400px;
+}
+
+/* Camera Mirror Mode - Only mirror raw video feed, keep overlays & placeholders 100% upright */
+#localCanvasWrapper.mirror-mode #webcamVideo,
+#localCanvasWrapper.mirror-mode #outputCanvas {
+  transform: scaleX(-1) !important;
+}
+
+#localCanvasWrapper:not(.mirror-mode) #webcamVideo,
+#localCanvasWrapper:not(.mirror-mode) #outputCanvas {
+  transform: scaleX(1) !important;
+}
+
+#camOffPlaceholder,
+#camOffPlaceholder * {
+  transform: scaleX(1) !important;
+}
