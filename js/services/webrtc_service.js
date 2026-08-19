@@ -237,11 +237,14 @@ class WebRTCService {
     // Handle ICE candidates
     this.peerConnection.onicecandidate = event => {
       if (event.candidate) {
+        console.log(`[WebRTC ICE Local Candidate]: type=${event.candidate.type}, protocol=${event.candidate.protocol}, address=${event.candidate.address || event.candidate.ip || 'hidden'}`);
         window.supabaseService.sendSignalingMessage({
           type: 'ice-candidate',
           candidate: event.candidate,
           senderId: this.currentUserId
         });
+      } else {
+        console.log('[WebRTC ICE Local Candidate Gathering Complete]');
       }
     };
 
@@ -347,6 +350,7 @@ class WebRTCService {
       } else if (signal.type === 'ice-candidate') {
         if (signal.candidate) {
           try {
+            console.log(`[WebRTC ICE Remote Candidate]: type=${signal.candidate.type || 'unknown'}, protocol=${signal.candidate.protocol || 'unknown'}`);
             const candidate = new RTCIceCandidate(signal.candidate);
             if (this.peerConnection.remoteDescription && this.peerConnection.remoteDescription.type) {
               await this.peerConnection.addIceCandidate(candidate);

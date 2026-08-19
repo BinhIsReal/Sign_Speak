@@ -6,12 +6,11 @@
 
 const SUPABASE_URL = "https://sljiqkenvcxtfewdfuqy.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_J6RMR5HKV2ZgWAteat-ybw_xby5bMGD";
-const SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsamlxa2VudmN4dGZld2RmdXF5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTE0NTU2MywiZXhwIjoyMTAwNzIxNTYzfQ._QBULv6aQwJvi4kVSHjCZqG7h0G3-AfDyFMIdT4tcVk";
 
 class SupabaseService {
   constructor() {
     this.url = SUPABASE_URL;
-    this.key = SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY;
+    this.key = SUPABASE_ANON_KEY;
     this.client = null;
     this.activeSignalingChannel = null;
     this.activeChatChannel = null;
@@ -27,7 +26,7 @@ class SupabaseService {
           persistSession: true
         }
       });
-      console.info("[Supabase Client] Admin Service Role Key active. Direct Cloud Authentication enabled.");
+      console.info("[Supabase Client] Public Anon Key active.");
 
       setTimeout(() => {
         this.syncCurrentUserProfileToCloud();
@@ -48,13 +47,26 @@ class SupabaseService {
   }
 
   ensureValidUUID(idStr) {
-    if (!idStr || typeof idStr !== 'string') return this.generateUUID();
+    if (!idStr || typeof idStr !== 'string') return '00000000-0000-4000-8000-000000000000';
     const str = idStr.trim();
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (uuidRegex.test(str)) {
       return str;
     }
-    return this.generateUUID();
+    let hash1 = 0, hash2 = 0;
+    for (let i = 0; i < str.length; i++) {
+      const ch = str.charCodeAt(i);
+      hash1 = (hash1 << 5) - hash1 + ch;
+      hash1 |= 0;
+      hash2 = (hash2 << 7) - hash2 + ch;
+      hash2 |= 0;
+    }
+    const h1 = Math.abs(hash1).toString(16).padStart(8, '0');
+    const h2 = Math.abs(hash2).toString(16).padStart(8, '0');
+    const h3 = Math.abs(hash1 ^ hash2).toString(16).padStart(8, '0');
+    const h4 = Math.abs((hash1 + hash2) * 31).toString(16).padStart(8, '0');
+
+    return `${h1.substring(0,8)}-${h2.substring(0,4)}-4${h2.substring(4,7)}-8${h3.substring(0,3)}-${h3.substring(3,7)}${h4.substring(0,8)}`;
   }
 
   generateRandomIdName() {
@@ -62,28 +74,18 @@ class SupabaseService {
     return `@user${rand5}`;
   }
 
-  saveLocalSession(user, displayName, role, username = null, phone = null, dob = null) {
+  saveLocalSession(user, displayName, role, username = null) {
     const rawId = (user && user.id) ? user.id.toString() : '';
     const validId = this.ensureValidUUID(rawId);
 
     localStorage.setItem('user_id', validId);
     if (user && user.email) localStorage.setItem('user_email', user.email);
-    if (displayName) {
-      localStorage.setItem('user_full_name', displayName);
-      localStorage.setItem('user_display_name', displayName);
-    }
+    if (displayName) localStorage.setItem('user_full_name', displayName);
     if (role) localStorage.setItem('user_role', role);
-    if (phone || (user && user.phone)) localStorage.setItem('user_phone', phone || user.phone);
-    if (dob || (user && user.dob)) localStorage.setItem('user_dob', dob || user.dob);
 
     const finalUsername = username || localStorage.getItem('user_id_name') || this.generateRandomIdName();
     localStorage.setItem('user_id_name', finalUsername);
     localStorage.setItem('is_logged_in', 'true');
-
-    if (window.securityGuard && typeof window.securityGuard.loadSidebarUserProfile === 'function') {
-      window.securityGuard.loadSidebarUserProfile();
-    }
-
     return validId;
   }
 
@@ -91,11 +93,8 @@ class SupabaseService {
     localStorage.removeItem('user_id');
     localStorage.removeItem('user_email');
     localStorage.removeItem('user_full_name');
-    localStorage.removeItem('user_display_name');
     localStorage.removeItem('user_role');
     localStorage.removeItem('user_id_name');
-    localStorage.removeItem('user_phone');
-    localStorage.removeItem('user_dob');
     localStorage.removeItem('last_username_changed_at');
     localStorage.removeItem('is_logged_in');
   }
@@ -118,26 +117,20 @@ class SupabaseService {
     const displayName = localStorage.getItem('user_full_name') || 'Người dùng Sign Speak';
     const role = localStorage.getItem('user_role') || 'deaf';
     const username = localStorage.getItem('user_id_name') || this.generateRandomIdName();
-    const phone = localStorage.getItem('user_phone') || '';
 
     if (email) {
-      const payload = {
-        id: userId,
-        email: email,
-        password: 'session_active',
-        display_name: displayName,
-        role: role,
-        username: username,
-        phone: phone
-      };
-
       try {
-        const { error } = await this.client.from('profiles').upsert([payload], { onConflict: 'email' });
+        const { error } = await this.client.from('profiles').upsert([{
+          id: userId,
+          email: email,
+          password: 'session_active',
+          display_name: displayName,
+          role: role,
+          username: username
+        }], { onConflict: 'email' });
 
         if (error) {
           console.warn("[Supabase Cloud Profile Sync Notice]:", error.message);
-          delete payload.phone;
-          await this.client.from('profiles').upsert([payload], { onConflict: 'email' });
         } else {
           console.info("[Supabase Cloud Profile Sync Success]:", displayName, username);
         }
@@ -168,7 +161,7 @@ class SupabaseService {
           if (data.password === cleanPassword || data.password === 'session_active') {
             const validUUID = this.ensureValidUUID(data.id);
             data.id = validUUID;
-            this.saveLocalSession(data, data.display_name, data.role, data.username, data.phone, data.dob);
+            this.saveLocalSession(data, data.display_name, data.role, data.username);
             await this.syncCurrentUserProfileToCloud();
             return { data: { user: data }, error: null };
           } else {
@@ -189,7 +182,7 @@ class SupabaseService {
     if (matchedUser) {
       if (matchedUser.password === cleanPassword) {
         matchedUser.id = this.ensureValidUUID(matchedUser.id);
-        this.saveLocalSession(matchedUser, matchedUser.display_name, matchedUser.role, matchedUser.username, matchedUser.phone, matchedUser.dob);
+        this.saveLocalSession(matchedUser, matchedUser.display_name, matchedUser.role, matchedUser.username);
         await this.syncCurrentUserProfileToCloud();
         return { data: { user: matchedUser }, error: null };
       } else {
@@ -207,10 +200,8 @@ class SupabaseService {
   }
 
   // --- CLOUD AUTHENTICATION - SIGN UP ---
-  async signUp(email, password, displayName, role = 'deaf', phone = '', dob = '') {
+  async signUp(email, password, displayName, role = 'deaf') {
     const cleanEmail = (email || '').trim().toLowerCase();
-    const cleanPhone = (phone || '').trim();
-    const cleanDob = (dob || '').trim();
     const defaultUsername = this.generateRandomIdName();
 
     if (!cleanEmail || !password) {
@@ -242,28 +233,22 @@ class SupabaseService {
       password: password,
       display_name: displayName,
       role: role,
-      phone: cleanPhone,
-      dob: cleanDob,
       username: defaultUsername
     };
 
     if (this.client) {
       try {
-        const payload = {
+        const { error: upsertErr } = await this.client.from('profiles').upsert([{
           id: validUUID,
           email: cleanEmail,
           password: password,
           display_name: displayName,
           role: role,
-          username: defaultUsername,
-          phone: cleanPhone
-        };
-        const { error: upsertErr } = await this.client.from('profiles').upsert([payload], { onConflict: 'email' });
+          username: defaultUsername
+        }], { onConflict: 'email' });
 
         if (upsertErr) {
           console.warn("[Supabase Cloud Upsert Notice]:", upsertErr.message);
-          delete payload.phone;
-          await this.client.from('profiles').upsert([payload], { onConflict: 'email' });
         } else {
           console.info("[Supabase Cloud Profile Upsert Successful]:", validUUID);
         }
@@ -281,11 +266,8 @@ class SupabaseService {
     }
     localStorage.setItem('registered_users_db', JSON.stringify(localUserDb));
 
-    this.saveLocalSession(newUser, displayName, role, defaultUsername, cleanPhone, cleanDob);
-    return { 
-      data: { user: newUser }, 
-      noticeMessage: "🎉 Đăng ký tài khoản thành công! Đang chuyển hướng vào hệ thống Sign Speak..." 
-    };
+    this.saveLocalSession(newUser, displayName, role, defaultUsername);
+    return { data: { user: newUser }, error: null };
   }
 
   async signOut() {
@@ -303,19 +285,37 @@ class SupabaseService {
     localStorage.setItem('user_id', userId);
 
     const email = localStorage.getItem('user_email') || '';
-    const displayName = localStorage.getItem('user_full_name') || localStorage.getItem('user_display_name') || 'Người dùng Sign Speak';
+    const displayName = localStorage.getItem('user_full_name') || 'Người dùng Sign Speak';
     const role = localStorage.getItem('user_role') || 'deaf';
     const username = localStorage.getItem('user_id_name') || '@user10293';
+    const avatarUrl = localStorage.getItem('user_avatar_url') || '';
 
     return {
       id: userId,
       email: email,
+      avatar_url: avatarUrl,
       user_metadata: {
         display_name: displayName,
         role: role,
-        username: username
+        username: username,
+        avatar_url: avatarUrl
       }
     };
+  }
+
+  async updateUserProfileAvatar(avatarDataUrl) {
+    localStorage.setItem('user_avatar_url', avatarDataUrl);
+
+    let rawId = localStorage.getItem('user_id') || '';
+    if (rawId && this.client) {
+      try {
+        const validId = this.ensureValidUUID(rawId);
+        await this.client.from('profiles').update({ avatar_url: avatarDataUrl }).eq('id', validId);
+      } catch (e) {
+        console.warn('[updateUserProfileAvatar Notice]:', e);
+      }
+    }
+    return true;
   }
 
   // --- FRIENDS & CONTACTS SEARCH ---
@@ -352,7 +352,10 @@ class SupabaseService {
     const currentEmail = (currentUser.email || '').toLowerCase();
     const friendships = await this.getFriendships();
 
+    // ONLY incoming friend requests sent by OTHER users to CURRENT user
     const pending = friendships.filter(f => 
+      f.user_id !== currentUserId && 
+      (!currentEmail || f.user_id !== currentEmail) &&
       (f.friend_id === currentUserId || (currentEmail && f.friend_id === currentEmail)) && 
       (f.status === 'pending' || f.status === 'pending_sent')
     );
@@ -406,8 +409,9 @@ class SupabaseService {
         const isSelfId = currentUserId && uId === currentUserId;
         const isSelfEmail = currentEmail && uEmail === currentEmail;
         const isSelfUsername = currentUsername && uUsername === currentUsername;
+        const isSelfName = currentDisplayName && uDisplayName === currentDisplayName;
 
-        return !isSelfId && !isSelfEmail && !isSelfUsername;
+        return !isSelfId && !isSelfEmail && !isSelfUsername && !isSelfName;
       })
       .map(u => {
         const rel = friendships.find(f => 
@@ -432,13 +436,16 @@ class SupabaseService {
           ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
           : (u.display_name || 'US').substring(0, 2).toUpperCase();
 
+        const userAvatar = u.avatar_url || u.avatar || initials;
+        const isOnline = this.isUserOnline(u);
         return {
           id: u.id,
           display_name: u.display_name,
           username: u.username || '@user' + Math.floor(10000 + Math.random() * 90000),
           role: u.role,
-          avatar: initials,
-          online: true,
+          avatar: userAvatar,
+          avatar_url: u.avatar_url || u.avatar || null,
+          online: isOnline,
           friendStatus: friendStatus
         };
       });
@@ -590,199 +597,17 @@ class SupabaseService {
     return all.filter(m => m.room_id === roomId);
   }
 
-  async getChatHistoryAsync(roomId) {
-    const local = this.getChatHistory(roomId);
+  async saveChatMessage(roomId, messageObj) {
+    if (!messageObj) return;
 
-    if (this.client) {
-      try {
-        const { data, error } = await this.client
-          .from('messages')
-          .select('*')
-          .eq('room_id', roomId)
-          .order('created_at', { ascending: true });
-
-        if (!error && data && Array.isArray(data) && data.length > 0) {
-          const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
-          let updated = false;
-
-          data.forEach(cloudMsg => {
-            const mappedMsg = {
-              id: cloudMsg.id,
-              room_id: cloudMsg.room_id,
-              sender_id: cloudMsg.sender_id,
-              recipient_id: cloudMsg.recipient_id,
-              sender_name: cloudMsg.sender_name,
-              text: cloudMsg.text,
-              timestamp: cloudMsg.timestamp,
-              read: cloudMsg.read || false
-            };
-
-            const idx = all.findIndex(m => m.id === mappedMsg.id);
-            if (idx === -1) {
-              all.push(mappedMsg);
-              updated = true;
-            } else {
-              all[idx] = mappedMsg;
-              updated = true;
-            }
-          });
-
-          if (updated) {
-            localStorage.setItem('chat_messages_db', JSON.stringify(all));
-          }
-          return all.filter(m => m.room_id === roomId);
-        }
-      } catch (e) {
-        console.info('[Supabase Cloud getChatHistoryAsync Fallback to Local]:', e.message || e);
-      }
-    }
-
-    return local;
-  }
-
-  seedDefaultUnreadMessages(currentUserId, friends) {
-    if (localStorage.getItem('chat_messages_seeded') === 'true') return;
+    // 1. Save locally
     const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
-    if (all.length > 0) return;
-    if (!friends || friends.length === 0) return;
-
-    const friend1 = friends[0];
-    const friend2 = friends.length > 1 ? friends[1] : null;
-    const seeded = [];
-
-    if (friend1) {
-      const room1 = this.getCanonicalRoomId(currentUserId, friend1.id);
-      seeded.push(
-        {
-          id: this.generateUUID(),
-          room_id: room1,
-          sender_id: friend1.id,
-          recipient_id: currentUserId,
-          sender_name: friend1.display_name,
-          text: "Xin chào! Bạn có tiện trao đổi về video VSL không?",
-          timestamp: "09:15",
-          read: false
-        },
-        {
-          id: this.generateUUID(),
-          room_id: room1,
-          sender_id: friend1.id,
-          recipient_id: currentUserId,
-          sender_name: friend1.display_name,
-          text: "Mình vừa gửi gợi ý từ vựng mới đó!",
-          timestamp: "09:18",
-          read: false
-        }
-      );
-    }
-
-    if (friend2) {
-      const room2 = this.getCanonicalRoomId(currentUserId, friend2.id);
-      seeded.push({
-        id: this.generateUUID(),
-        room_id: room2,
-        sender_id: friend2.id,
-        recipient_id: currentUserId,
-        sender_name: friend2.display_name,
-        text: "Chào bạn, hôm nay cuộc gọi dịch VSL rất tốt!",
-        timestamp: "08:30",
-        read: false
-      });
-    }
-
-    localStorage.setItem('chat_messages_db', JSON.stringify(seeded));
-    localStorage.setItem('chat_messages_seeded', 'true');
-  }
-
-  getUnreadMessagesCountForRoom(roomId, currentUserId) {
-    const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
-    return all.filter(m => m.room_id === roomId && m.sender_id !== currentUserId && m.read === false).length;
-  }
-
-  getTotalUnreadMessagesCount(currentUserId) {
-    const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
-    return all.filter(m => m.sender_id !== currentUserId && m.read === false).length;
-  }
-
-  markMessagesAsRead(roomId, currentUserId) {
-    let all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
-    let modified = false;
-    all.forEach(m => {
-      if (m.room_id === roomId && m.sender_id !== currentUserId && m.read === false) {
-        m.read = true;
-        modified = true;
-      }
-    });
-    if (modified) {
+    if (!all.some(m => m.id === messageObj.id)) {
+      all.push(messageObj);
       localStorage.setItem('chat_messages_db', JSON.stringify(all));
     }
-    this.updateSidebarBadges();
-  }
 
-  async updateSidebarBadges() {
-    try {
-      const currentUser = await this.getCurrentUser();
-      const currentUserId = currentUser ? currentUser.id : "usr_anon";
-
-      const unreadCount = this.getTotalUnreadMessagesCount(currentUserId);
-      const pendingRequestsCount = await this.getPendingRequestsCount();
-
-      const msgBadges = document.querySelectorAll('#sidebarMessagesBadge');
-      msgBadges.forEach(badge => {
-        if (unreadCount > 0) {
-          badge.classList.remove('hidden');
-          badge.innerText = unreadCount > 99 ? '99+' : unreadCount;
-        } else {
-          badge.classList.add('hidden');
-        }
-      });
-
-      const contactBadges = document.querySelectorAll('#sidebarContactsBadge');
-      contactBadges.forEach(badge => {
-        if (pendingRequestsCount > 0) {
-          badge.classList.remove('hidden');
-          badge.innerText = pendingRequestsCount > 99 ? '99+' : pendingRequestsCount;
-        } else {
-          badge.classList.add('hidden');
-        }
-      });
-    } catch (e) {
-      console.warn('[updateSidebarBadges error]:', e);
-    }
-  }
-
-  async saveChatMessage(roomId, messageObj) {
-    if (messageObj.read === undefined) {
-      messageObj.read = false;
-    }
-    const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
-    const existingIdx = all.findIndex(m => m.id === messageObj.id);
-    if (existingIdx === -1) {
-      all.push(messageObj);
-    } else {
-      all[existingIdx] = messageObj;
-    }
-    localStorage.setItem('chat_messages_db', JSON.stringify(all));
-
-    if (this.client) {
-      try {
-        await this.client.from('messages').upsert([{
-          id: this.ensureValidUUID(messageObj.id),
-          room_id: roomId,
-          sender_id: this.ensureValidUUID(messageObj.sender_id),
-          recipient_id: messageObj.recipient_id ? this.ensureValidUUID(messageObj.recipient_id) : null,
-          sender_name: messageObj.sender_name || 'User',
-          text: messageObj.text,
-          timestamp: messageObj.timestamp || 'Mới',
-          read: messageObj.read || false
-        }], { onConflict: 'id' });
-      } catch (e) {
-        console.info('[Supabase Cloud saveChatMessage Notice]:', e.message || e);
-      }
-    }
-
-    this.updateSidebarBadges();
-
+    // 2. Broadcast to active chat room channel if connected
     if (this.activeChatChannel) {
       try {
         await this.activeChatChannel.send({
@@ -790,53 +615,274 @@ class SupabaseService {
           event: 'new-chat-message',
           payload: messageObj
         });
+      } catch (e) {}
+    }
+
+    // 3. Broadcast to recipient's personal message channel (GLOBAL REALTIME RECEIVE)
+    if (this.client && messageObj.recipient_id) {
+      try {
+        const targetChannel = this.client.channel(`user_messages_${messageObj.recipient_id}`);
+        await targetChannel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await targetChannel.send({
+              type: 'broadcast',
+              event: 'global_new_message',
+              payload: messageObj
+            });
+            setTimeout(() => {
+              this.client.removeChannel(targetChannel);
+            }, 3000);
+          }
+        });
       } catch (e) {
-        console.warn('[Supabase Realtime Broadcast Exception]:', e);
+        console.warn('[saveChatMessage Broadcast Exception]:', e);
       }
     }
 
-    if (this.client && messageObj.recipient_id) {
+    // 4. Save message to Supabase Cloud DB 'messages' table if connected
+    if (this.client) {
       try {
-        const notifChan = this.client.channel(`user_messages_${messageObj.recipient_id}`);
-        await notifChan.send({
-          type: 'broadcast',
-          event: 'new-user-message',
-          payload: messageObj
+        const validSender = this.ensureValidUUID(messageObj.sender_id);
+        const validRecipient = messageObj.recipient_id ? this.ensureValidUUID(messageObj.recipient_id) : null;
+        await this.client.from('messages').upsert([{
+          id: messageObj.id,
+          room_id: roomId,
+          sender_id: validSender,
+          recipient_id: validRecipient,
+          sender_name: messageObj.sender_name,
+          text: messageObj.text,
+          timestamp: messageObj.timestamp,
+          read: messageObj.read || false
+        }]);
+      } catch (e) {
+        console.warn('[saveChatMessage Cloud Table Notice]:', e);
+      }
+    }
+  }
+
+  subscribeGlobalUserMessages(myUserId, onNewMessageCallback) {
+    if (!this.client || !myUserId) return null;
+
+    if (this.globalUserMessagesChannel) {
+      this.client.removeChannel(this.globalUserMessagesChannel);
+    }
+
+    this.globalUserMessagesChannel = this.client.channel(`user_messages_${myUserId}`, {
+      config: { broadcast: { self: false } }
+    });
+
+    this.globalUserMessagesChannel.on('broadcast', { event: 'global_new_message' }, payload => {
+      const msg = payload.payload;
+      if (!msg) return;
+
+      // 1. Save to local storage
+      const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
+      if (!all.some(m => m.id === msg.id)) {
+        all.push(msg);
+        localStorage.setItem('chat_messages_db', JSON.stringify(all));
+      }
+
+      // 2. Update sidebar unread badges on ALL pages
+      this.updateSidebarBadges();
+
+      // 3. Execute custom page callback or show toast
+      if (onNewMessageCallback) {
+        try { onNewMessageCallback(msg); } catch (e) {}
+      } else {
+        this.showGlobalMessageToast(msg);
+      }
+    });
+
+    this.globalUserMessagesChannel.subscribe(status => {
+      console.log(`[Supabase Realtime Global Messages] Subscribed to user_messages_${myUserId} status:`, status);
+    });
+
+    return this.globalUserMessagesChannel;
+  }
+
+  showGlobalMessageToast(msg) {
+    if (!msg || document.getElementById(`toast_msg_${msg.id}`)) return;
+
+    const toast = document.createElement('div');
+    toast.id = `toast_msg_${msg.id}`;
+    toast.className = 'fixed top-5 right-5 z-50 bg-white/95 dark:bg-slate-900/95 text-slate-900 dark:text-white p-4 rounded-3xl shadow-2xl border border-slate-200/90 dark:border-slate-700/80 flex items-center gap-3.5 max-w-sm backdrop-blur-md cursor-pointer animate-bounce transition-all hover:scale-105';
+
+    const senderName = msg.sender_name || 'Bạn mới';
+    const textPreview = msg.text ? (msg.text.length > 35 ? msg.text.substring(0, 35) + '...' : msg.text) : 'Đã gửi tin nhắn';
+
+    toast.innerHTML = `
+      <div class="w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 text-primary font-extrabold text-sm flex items-center justify-center shrink-0 border border-primary/20 dark:border-primary/30">
+        💬
+      </div>
+      <div class="flex flex-col min-w-0 flex-1">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs font-bold text-slate-900 dark:text-white truncate">${senderName}</span>
+          <span class="text-[10px] text-slate-400 font-semibold">${msg.timestamp || 'Mới'}</span>
+        </div>
+        <p class="text-xs text-slate-500 dark:text-slate-300 truncate mt-0.5">${textPreview}</p>
+      </div>
+      <span class="material-symbols-outlined text-slate-400 text-sm">chevron_right</span>
+    `;
+
+    toast.addEventListener('click', () => {
+      window.location.href = `index.html?chat_with=${encodeURIComponent(msg.sender_id)}`;
+    });
+
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      if (toast.parentNode) toast.remove();
+    }, 5000);
+  }
+
+  // --- REALTIME PRESENCE & ONLINE/OFFLINE ENGINE ---
+
+  initUserPresence(myUserId) {
+    if (!myUserId || myUserId === "usr_anon") return;
+    this.currentUserIdForPresence = myUserId.toString().toLowerCase();
+
+    if (!this.onlineUsersSet) {
+      this.onlineUsersSet = new Set();
+    }
+    this.onlineUsersSet.add(this.currentUserIdForPresence);
+
+    this.recordUserHeartbeat(this.currentUserIdForPresence);
+
+    if (this.client) {
+      try {
+        if (this.presenceChannel) {
+          this.client.removeChannel(this.presenceChannel);
+        }
+
+        this.presenceChannel = this.client.channel('presence_global', {
+          config: { presence: { key: this.currentUserIdForPresence } }
         });
+
+        this.presenceChannel
+          .on('presence', { event: 'sync' }, () => {
+            const state = this.presenceChannel.presenceState();
+            this.onlineUsersSet.clear();
+            this.onlineUsersSet.add(this.currentUserIdForPresence);
+
+            Object.keys(state).forEach(key => {
+              const cleanKey = key.toString().toLowerCase();
+              this.onlineUsersSet.add(cleanKey);
+              this.recordUserHeartbeat(cleanKey);
+            });
+            this.notifyPresenceChange();
+          })
+          .on('presence', { event: 'join' }, ({ key }) => {
+            if (key) {
+              const cleanKey = key.toString().toLowerCase();
+              this.onlineUsersSet.add(cleanKey);
+              this.recordUserHeartbeat(cleanKey);
+              this.notifyPresenceChange();
+            }
+          })
+          .on('presence', { event: 'leave' }, ({ key }) => {
+            if (key) {
+              const cleanKey = key.toString().toLowerCase();
+              if (cleanKey !== this.currentUserIdForPresence) {
+                this.onlineUsersSet.delete(cleanKey);
+              }
+              this.notifyPresenceChange();
+            }
+          });
+
+        this.presenceChannel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await this.presenceChannel.track({
+              user_id: this.currentUserIdForPresence,
+              online_at: new Date().toISOString()
+            });
+          }
+        });
+      } catch (e) {
+        console.warn('[Presence Subscription Exception]:', e);
+      }
+    }
+
+    if (!this.heartbeatTimer) {
+      this.heartbeatTimer = setInterval(() => {
+        if (this.currentUserIdForPresence) {
+          this.recordUserHeartbeat(this.currentUserIdForPresence);
+          if (this.presenceChannel) {
+            this.presenceChannel.track({
+              user_id: this.currentUserIdForPresence,
+              online_at: new Date().toISOString()
+            }).catch(() => {});
+          }
+        }
+      }, 15000);
+    }
+  }
+
+  recordUserHeartbeat(userId) {
+    if (!userId) return;
+    try {
+      const uid = userId.toString().toLowerCase();
+      const heartbeats = JSON.parse(localStorage.getItem('user_heartbeats_db') || '{}');
+      heartbeats[uid] = Date.now();
+      localStorage.setItem('user_heartbeats_db', JSON.stringify(heartbeats));
+    } catch (e) {}
+  }
+
+  isUserOnline(userOrId) {
+    if (!userOrId) return false;
+
+    let possibleIds = [];
+    if (typeof userOrId === 'object') {
+      if (userOrId.id) possibleIds.push(userOrId.id.toString().toLowerCase());
+      if (userOrId.username) possibleIds.push(userOrId.username.toString().toLowerCase().replace(/^@/, ''));
+      if (userOrId.email) possibleIds.push(userOrId.email.toString().toLowerCase());
+    } else {
+      possibleIds.push(userOrId.toString().toLowerCase().replace(/^@/, ''));
+    }
+
+    const myId = (localStorage.getItem('user_id') || '').toLowerCase();
+    const myEmail = (localStorage.getItem('user_email') || '').toLowerCase();
+    const myUsername = (localStorage.getItem('user_id_name') || '').toLowerCase().replace(/^@/, '');
+
+    for (let id of possibleIds) {
+      if (!id) continue;
+      if (id === myId || id === myEmail || id === myUsername) return true;
+      if (this.onlineUsersSet && (this.onlineUsersSet.has(id) || this.onlineUsersSet.has(`@${id}`))) return true;
+
+      try {
+        const heartbeats = JSON.parse(localStorage.getItem('user_heartbeats_db') || '{}');
+        const timestamp = heartbeats[id] || heartbeats[`@${id}`];
+        if (timestamp) {
+          const diff = Date.now() - Number(timestamp);
+          if (diff < 60000) return true;
+        }
       } catch (e) {}
+    }
+
+    return false;
+  }
+
+  notifyPresenceChange() {
+    if (typeof window.loadConversationsListGlobal === 'function') {
+      try { window.loadConversationsListGlobal(); } catch (e) {}
+    }
+    if (typeof window.loadContactsGlobal === 'function') {
+      try { window.loadContactsGlobal(); } catch (e) {}
     }
   }
 
   subscribeChatRoom(roomId, onMessageCallback) {
     if (!this.client) return null;
 
-    if (this.activeChatChannel && this.activeChatRoomId === roomId) {
-      return this.activeChatChannel;
-    }
-
     if (this.activeChatChannel) {
-      try {
-        this.client.removeChannel(this.activeChatChannel);
-      } catch (e) {}
+      this.client.removeChannel(this.activeChatChannel);
     }
 
-    this.activeChatRoomId = roomId;
     this.activeChatChannel = this.client.channel(`chat_${roomId}`, {
-      config: { broadcast: { self: false } }
+      config: { broadcast: { self: true } }
     });
 
     this.activeChatChannel.on('broadcast', { event: 'new-chat-message' }, payload => {
-      if (onMessageCallback && payload && payload.payload) {
-        const incomingMsg = payload.payload;
-
-        const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
-        if (!all.some(m => m.id === incomingMsg.id)) {
-          all.push(incomingMsg);
-          localStorage.setItem('chat_messages_db', JSON.stringify(all));
-        }
-
-        onMessageCallback(incomingMsg);
-        this.updateSidebarBadges();
+      if (onMessageCallback && payload.payload) {
+        onMessageCallback(payload.payload);
       }
     });
 
@@ -845,41 +891,6 @@ class SupabaseService {
     });
 
     return this.activeChatChannel;
-  }
-
-  subscribeUserMessageNotifications(myUserId, onIncomingMsg) {
-    if (!this.client || !myUserId) return null;
-
-    if (this.userMessagesChannel) {
-      this.client.removeChannel(this.userMessagesChannel);
-    }
-
-    this.userMessagesChannel = this.client.channel(`user_messages_${myUserId}`, {
-      config: { broadcast: { self: false } }
-    });
-
-    this.userMessagesChannel.on('broadcast', { event: 'new-user-message' }, payload => {
-      if (payload.payload) {
-        const incomingMsg = payload.payload;
-
-        const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
-        if (!all.some(m => m.id === incomingMsg.id)) {
-          all.push(incomingMsg);
-          localStorage.setItem('chat_messages_db', JSON.stringify(all));
-        }
-
-        if (onIncomingMsg) {
-          onIncomingMsg(incomingMsg);
-        }
-        this.updateSidebarBadges();
-      }
-    });
-
-    this.userMessagesChannel.subscribe(status => {
-      console.log(`[Supabase Realtime User Notif] Subscribed to user_messages_${myUserId} status:`, status);
-    });
-
-    return this.userMessagesChannel;
   }
 
   subscribeSignalingRoom(roomId, onSignalCallback) {
@@ -901,13 +912,11 @@ class SupabaseService {
       this.client.removeChannel(this.activeSignalingChannel);
     }
 
+    this.isSignalingSubscribed = false;
+    this.signalingOutboxQueue = this.signalingOutboxQueue || [];
     this.activeSignalingRoomId = roomId;
-    this.signalingChannelReady = false; // BUG C FIX: track ready state
-    this.pendingSignalingMessages = [];  // BUG C FIX: queue for pre-subscribe messages
-
-    // self:false prevents sender from receiving its own signaling messages (BUG #3 fix)
     this.activeSignalingChannel = this.client.channel(`signaling_${roomId}`, {
-      config: { broadcast: { self: false } }
+      config: { broadcast: { self: true } }
     });
 
     this.activeSignalingChannel.on('broadcast', { event: 'webrtc-signal' }, payload => {
@@ -921,20 +930,21 @@ class SupabaseService {
     this.activeSignalingChannel.subscribe(status => {
       console.log(`[Supabase Realtime WebRTC] Connected to signaling_${roomId} status:`, status);
       if (status === 'SUBSCRIBED') {
-        this.signalingChannelReady = true;
-        // BUG C FIX: Flush any messages that were queued before channel was ready
-        if (this.pendingSignalingMessages && this.pendingSignalingMessages.length > 0) {
-          console.log(`[WebRTC Signaling] Flushing ${this.pendingSignalingMessages.length} queued message(s)...`);
-          const queued = [...this.pendingSignalingMessages];
-          this.pendingSignalingMessages = [];
-          queued.forEach(msg => {
+        this.isSignalingSubscribed = true;
+        // Flush all queued messages
+        if (this.signalingOutboxQueue && this.signalingOutboxQueue.length > 0) {
+          console.log(`[Supabase Realtime WebRTC] Flushing ${this.signalingOutboxQueue.length} queued signaling messages`);
+          while (this.signalingOutboxQueue.length > 0) {
+            const msg = this.signalingOutboxQueue.shift();
             this.activeSignalingChannel.send({
               type: 'broadcast',
               event: 'webrtc-signal',
               payload: msg
-            }).catch(e => console.warn('[WebRTC Signaling] Failed to flush queued message:', e));
-          });
+            }).catch(err => console.warn('[Signaling Outbox Send Error]:', err));
+          }
         }
+      } else {
+        this.isSignalingSubscribed = false;
       }
     });
 
@@ -942,25 +952,29 @@ class SupabaseService {
   }
 
   async sendSignalingMessage(signalData) {
-    if (!this.activeSignalingChannel) return;
+    if (!this.signalingOutboxQueue) this.signalingOutboxQueue = [];
 
-    // BUG C FIX: If channel is not yet SUBSCRIBED, queue the message instead of dropping it.
-    // Supabase Realtime silently drops broadcast messages sent before the channel is subscribed.
-    if (!this.signalingChannelReady) {
-      console.log('[WebRTC Signaling] Channel not ready yet, queuing message:', signalData.type);
-      if (!this.pendingSignalingMessages) this.pendingSignalingMessages = [];
-      this.pendingSignalingMessages.push(signalData);
-      return;
+    if (this.activeSignalingChannel && this.isSignalingSubscribed) {
+      try {
+        await this.activeSignalingChannel.send({
+          type: 'broadcast',
+          event: 'webrtc-signal',
+          payload: signalData
+        });
+      } catch (err) {
+        console.warn('[sendSignalingMessage] Send error, enqueuing message:', err);
+        this.signalingOutboxQueue.push(signalData);
+      }
+    } else {
+      this.signalingOutboxQueue.push(signalData);
     }
-
-    await this.activeSignalingChannel.send({
-      type: 'broadcast',
-      event: 'webrtc-signal',
-      payload: signalData
-    });
   }
 
   // --- REALTIME GLOBAL CALL NOTIFICATIONS ---
+
+  subscribeCallNotifications(myUserId, onIncomingCall) {
+    return this.subscribeGlobalCallNotifications(myUserId, onIncomingCall);
+  }
 
   subscribeGlobalCallNotifications(myUserId, onIncomingCall) {
     if (!this.client || !myUserId) return null;
@@ -1002,6 +1016,288 @@ class SupabaseService {
         }, 3000);
       }
     });
+  }
+
+  // --- SIDEBAR BADGES & MESSAGING UTILITIES ---
+
+  seedDefaultUnreadMessages(currentUserId, friends) {
+    if (!currentUserId || !friends || friends.length === 0) return;
+    try {
+      const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
+      if (all.length > 0) return;
+
+      const sampleMsgs = [];
+      friends.forEach((f, idx) => {
+        const roomId = this.getCanonicalRoomId(currentUserId, f.id);
+        const isDeaf = f.role === 'deaf';
+        sampleMsgs.push({
+          id: 'msg_seed_' + idx + '_' + Date.now(),
+          room_id: roomId,
+          sender_id: f.id,
+          recipient_id: currentUserId,
+          sender_name: f.display_name,
+          text: isDeaf ? '🤟 Xin chào! Mình vừa gửi cử chỉ VSL cho bạn.' : '🎙️ Xin chào bạn! Rất vui được kết nối.',
+          timestamp: '10:00',
+          read: false
+        });
+      });
+      localStorage.setItem('chat_messages_db', JSON.stringify(sampleMsgs));
+    } catch (e) {
+      console.warn('[seedDefaultUnreadMessages error]:', e);
+    }
+  }
+
+  getUnreadMessagesCountForUser(roomId, currentUserId, partnerId) {
+    try {
+      const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
+      return all.filter(m => (m.room_id === roomId || (m.sender_id === partnerId && m.recipient_id === currentUserId)) && m.sender_id !== currentUserId && m.read === false).length;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  getUnreadMessagesCountForRoom(roomId, currentUserId) {
+    const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
+    return all.filter(m => m.room_id === roomId && m.sender_id !== currentUserId && m.read === false).length;
+  }
+
+  getTotalUnreadMessagesCount(currentUserId) {
+    try {
+      const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
+      const cIdStr = (currentUserId || '').toString().toLowerCase();
+      return all.filter(m => {
+        const mSender = (m.sender_id || '').toString().toLowerCase();
+        const mRecipient = (m.recipient_id || '').toString().toLowerCase();
+        return m.read === false && mSender !== cIdStr && (mRecipient === cIdStr || !mRecipient || mRecipient === 'usr_anon' || mRecipient === 'undefined');
+      }).length;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  markMessagesAsRead(roomId, currentUserId, partnerId = null) {
+    try {
+      let all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
+      let modified = false;
+
+      const pIdStr = partnerId ? partnerId.toString().toLowerCase() : '';
+      const rIdStr = roomId ? roomId.toString().toLowerCase() : '';
+      const cIdStr = currentUserId ? currentUserId.toString().toLowerCase() : '';
+
+      all.forEach(m => {
+        const mSender = (m.sender_id || '').toString().toLowerCase();
+        const mRecipient = (m.recipient_id || '').toString().toLowerCase();
+        const mRoom = (m.room_id || '').toString().toLowerCase();
+
+        const isMatchRoom = rIdStr && (mRoom === rIdStr || (pIdStr && mRoom.includes(pIdStr)));
+        const isMatchUserPair = pIdStr && (mSender === pIdStr || mRecipient === pIdStr || (pIdStr && mRoom.includes(pIdStr)));
+
+        if ((isMatchRoom || isMatchUserPair) && m.read !== true) {
+          m.read = true;
+          modified = true;
+        }
+      });
+
+      if (modified) {
+        localStorage.setItem('chat_messages_db', JSON.stringify(all));
+      }
+
+      if (this.client && roomId) {
+        try {
+          const validUserId = this.ensureValidUUID(currentUserId);
+          this.client.from('messages')
+            .update({ read: true })
+            .eq('room_id', roomId)
+            .neq('sender_id', validUserId)
+            .then(() => {});
+        } catch (e) {}
+      }
+
+      this.updateSidebarBadges();
+    } catch (e) {
+      console.warn('[markMessagesAsRead Exception]:', e);
+    }
+  }
+
+  async updateSidebarBadges() {
+    try {
+      const currentUser = await this.getCurrentUser();
+      const currentUserId = currentUser ? currentUser.id : (localStorage.getItem('user_id') || '');
+      if (!currentUserId) return;
+
+      const unreadCount = this.getTotalUnreadMessagesCount(currentUserId);
+      const pendingRequestsCount = await this.getPendingRequestsCount();
+
+      const msgBadges = document.querySelectorAll('#sidebarMessagesBadge');
+      msgBadges.forEach(badge => {
+        if (unreadCount > 0) {
+          badge.classList.remove('hidden');
+          badge.innerText = unreadCount > 99 ? '99+' : unreadCount;
+        } else {
+          badge.classList.add('hidden');
+        }
+      });
+
+      const contactBadges = document.querySelectorAll('#sidebarContactsBadge');
+      contactBadges.forEach(badge => {
+        if (pendingRequestsCount > 0) {
+          badge.classList.remove('hidden');
+          badge.innerText = pendingRequestsCount > 99 ? '99+' : pendingRequestsCount;
+        } else {
+          badge.classList.add('hidden');
+        }
+      });
+    } catch (e) {
+      console.warn('[updateSidebarBadges error]:', e);
+    }
+  }
+
+  async getChatHistoryAsync(roomId) {
+    const local = this.getChatHistory(roomId);
+    if (!this.client || !roomId) return local;
+
+    try {
+      const { data, error } = await this.client
+        .from('messages')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('created_at', { ascending: true });
+
+      if (!error && data && Array.isArray(data) && data.length > 0) {
+        const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
+        let updated = false;
+
+        data.forEach(cloudMsg => {
+          const mappedMsg = {
+            id: cloudMsg.id,
+            room_id: cloudMsg.room_id,
+            sender_id: cloudMsg.sender_id,
+            recipient_id: cloudMsg.recipient_id,
+            sender_name: cloudMsg.sender_name,
+            msg_type: cloudMsg.msg_type || (cloudMsg.text && cloudMsg.text.includes('📞') ? 'call_log' : 'text'),
+            call_status: cloudMsg.call_status || null,
+            duration: cloudMsg.duration || null,
+            text: cloudMsg.text,
+            timestamp: cloudMsg.timestamp,
+            read: cloudMsg.read !== undefined ? cloudMsg.read : false
+          };
+
+          const idx = all.findIndex(m => m.id === mappedMsg.id);
+          if (idx === -1) {
+            all.push(mappedMsg);
+            updated = true;
+          } else {
+            if (all[idx].read === true) mappedMsg.read = true;
+            if (all[idx].read !== mappedMsg.read || all[idx].text !== mappedMsg.text) {
+              all[idx] = mappedMsg;
+              updated = true;
+            }
+          }
+        });
+
+        if (updated) {
+          localStorage.setItem('chat_messages_db', JSON.stringify(all));
+        }
+        return all.filter(m => m.room_id === roomId);
+      }
+    } catch (e) {
+      console.info('[Supabase Cloud getChatHistoryAsync Fallback to Local]:', e.message || e);
+    }
+    return local;
+  }
+
+  subscribeUserMessageNotifications(myUserId, onIncomingMsg) {
+    if (!this.client || !myUserId) return null;
+
+    if (this.userMessagesChannel) {
+      try { this.client.removeChannel(this.userMessagesChannel); } catch (e) {}
+    }
+
+    this.userMessagesChannel = this.client.channel(`user_messages_${myUserId}`, {
+      config: { broadcast: { self: false } }
+    });
+
+    this.userMessagesChannel.on('broadcast', { event: 'new-user-message' }, payload => {
+      if (payload && payload.payload) {
+        const incomingMsg = payload.payload;
+        if (incomingMsg.sender_id && incomingMsg.sender_id !== myUserId) {
+          incomingMsg.read = false;
+        }
+
+        const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
+        const idx = all.findIndex(m => m.id === incomingMsg.id);
+        if (idx === -1) {
+          all.push(incomingMsg);
+          localStorage.setItem('chat_messages_db', JSON.stringify(all));
+        }
+
+        if (onIncomingMsg) {
+          onIncomingMsg(incomingMsg);
+        }
+
+        this.updateSidebarBadges();
+      }
+    });
+
+    this.userMessagesChannel.subscribe(status => {
+      console.log(`[Supabase Realtime User Notif] Subscribed to user_messages_${myUserId} status:`, status);
+    });
+
+    return this.userMessagesChannel;
+  }
+
+  async syncUnreadCloudMessagesToLocal(currentUserId) {
+    if (!this.client || !currentUserId || currentUserId === 'usr_anon') return;
+    const validId = this.ensureValidUUID(currentUserId);
+
+    try {
+      const { data, error } = await this.client
+        .from('messages')
+        .select('*')
+        .or(`recipient_id.eq.${validId},sender_id.eq.${validId}`)
+        .order('created_at', { ascending: true });
+
+      if (!error && data && Array.isArray(data) && data.length > 0) {
+        const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
+        let updated = false;
+
+        data.forEach(cloudMsg => {
+          const mappedMsg = {
+            id: cloudMsg.id,
+            room_id: cloudMsg.room_id,
+            sender_id: cloudMsg.sender_id,
+            recipient_id: cloudMsg.recipient_id,
+            sender_name: cloudMsg.sender_name,
+            msg_type: cloudMsg.msg_type || (cloudMsg.text && cloudMsg.text.includes('📞') ? 'call_log' : 'text'),
+            call_status: cloudMsg.call_status || null,
+            duration: cloudMsg.duration || null,
+            text: cloudMsg.text,
+            timestamp: cloudMsg.timestamp,
+            read: cloudMsg.read !== undefined ? cloudMsg.read : false
+          };
+
+          const idx = all.findIndex(m => m.id === mappedMsg.id);
+          if (idx === -1) {
+            all.push(mappedMsg);
+            updated = true;
+          } else {
+            if (all[idx].read === true) {
+              mappedMsg.read = true;
+            }
+            if (all[idx].read !== mappedMsg.read || all[idx].text !== mappedMsg.text) {
+              all[idx] = mappedMsg;
+              updated = true;
+            }
+          }
+        });
+
+        if (updated) {
+          localStorage.setItem('chat_messages_db', JSON.stringify(all));
+        }
+      }
+    } catch (e) {
+      console.info('[Supabase Cloud syncUnreadCloudMessagesToLocal Notice]:', e.message || e);
+    }
   }
 }
 

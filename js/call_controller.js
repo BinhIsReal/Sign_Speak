@@ -381,6 +381,71 @@ async function initCall() {
       requestAnimationFrame(processVideoFrame);
     }
 
+    // Subscribe to Signaling Room for WebRTC & Multimodal Subtitles FIRST
+    // This is the ONLY subscription - webrtc_service.js does NOT subscribe independently
+    window.supabaseService.subscribeSignalingRoom(roomId, async (signal) => {
+      if (!signal) return;
+
+      // Handle Call Declined by partner -> Exit caller immediately
+      if (signal.type === 'call-declined' || signal.type === 'call_declined' || signal.type === 'call-rejected') {
+        if (signal.senderId !== currentUserId) {
+          stopCallTimer();
+          webRTCService.endCall();
+          updateSubtitleDisplay(`⚠️ Đối phương đã từ chối cuộc gọi. Đang quay lại...`, 'Từ chối');
+          const statusText = document.getElementById('callStatusText');
+          if (statusText) {
+            statusText.className = "text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1 shrink-0";
+            statusText.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> <span>Cuộc gọi bị từ chối</span>`;
+          }
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 1800);
+        }
+        return;
+      }
+
+      if (signal.type === 'call-ended') {
+        if (signal.senderId !== currentUserId) {
+          stopCallTimer();
+          webRTCService.endCall();
+          window.location.href = 'index.html';
+        }
+        return;
+      }
+
+      if (signal.type === 'multimodal-subtitle') {
+        // Prevent echo loopback if message originated from this exact tab instance or local user ID
+        if (signal.instanceId && signal.instanceId === runtimeTabInstanceId) return;
+        if (signal.senderId && (signal.senderId === globalCurrentUserId || signal.senderId === currentUserId)) return;
+
+        const senderLabel = signal.senderName || 'Đối Phương';
+
+        if (signal.kind === 'vsl') {
+          updateSubtitleDisplay(`🤟 [${senderLabel} (VSL)]: ${signal.text}`, `VSL ${signal.confidence || 95}%`);
+          addTranscriptLog(`${senderLabel} (VSL)`, signal.text, false);
+
+          if (window.ttsService && !isTtsMuted) {
+            // Speak ONLY the newly recognized gesture word/token, NOT the accumulated sentence from the beginning!
+            const tokenToSpeak = signal.word || (signal.text ? signal.text.trim().split(/\s+/).pop() : '');
+            if (tokenToSpeak) {
+              window.ttsService.speak(tokenToSpeak);
+            }
+          }
+        } else if (signal.kind === 'stt') {
+          const isFinal = signal.isFinal;
+          updateSubtitleDisplay(`🎙️ [${senderLabel} (Giọng nói)]: ${signal.text}${isFinal ? '' : '...'}`, isFinal ? 'STT Hoàn thành' : 'STT Đang nói...');
+
+          if (isFinal) {
+            addTranscriptLog(`${senderLabel} (STT)`, signal.text, false);
+          }
+        }
+        return;
+      }
+
+      // Forward ALL WebRTC signals (peer-joined, offer, answer, ice-candidate) to webRTCService
+      await webRTCService.handleIncomingSignal(signal, currentUserId);
+    });
+
     // WebRTC Peer Connection & Remote Video Stream Setup
     let targetPartnerId = '';
     if (Array.isArray(userIds) && userIds.length >= 2) {
@@ -483,70 +548,7 @@ async function initCall() {
       roleParam === 'caller',
       isPolite
     );
-    // Subscribe to Signaling Room for WebRTC & Multimodal Subtitles
-    // This is the ONLY subscription - webrtc_service.js does NOT subscribe independently
-    window.supabaseService.subscribeSignalingRoom(roomId, async (signal) => {
-      if (!signal) return;
 
-      // Handle Call Declined by partner -> Exit caller immediately
-      if (signal.type === 'call-declined' || signal.type === 'call_declined' || signal.type === 'call-rejected') {
-        if (signal.senderId !== currentUserId) {
-          stopCallTimer();
-          webRTCService.endCall();
-          updateSubtitleDisplay(`⚠️ Đối phương đã từ chối cuộc gọi. Đang quay lại...`, 'Từ chối');
-          const statusText = document.getElementById('callStatusText');
-          if (statusText) {
-            statusText.className = "text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1 shrink-0";
-            statusText.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> <span>Cuộc gọi bị từ chối</span>`;
-          }
-          setTimeout(() => {
-            window.location.href = 'index.html';
-          }, 1800);
-        }
-        return;
-      }
-
-      if (signal.type === 'call-ended') {
-        if (signal.senderId !== currentUserId) {
-          stopCallTimer();
-          webRTCService.endCall();
-          window.location.href = 'index.html';
-        }
-        return;
-      }
-
-      if (signal.type === 'multimodal-subtitle') {
-        // Prevent echo loopback if message originated from this exact tab instance or local user ID
-        if (signal.instanceId && signal.instanceId === runtimeTabInstanceId) return;
-        if (signal.senderId && (signal.senderId === globalCurrentUserId || signal.senderId === currentUserId)) return;
-
-        const senderLabel = signal.senderName || 'Đối Phương';
-
-        if (signal.kind === 'vsl') {
-          updateSubtitleDisplay(`🤟 [${senderLabel} (VSL)]: ${signal.text}`, `VSL ${signal.confidence || 95}%`);
-          addTranscriptLog(`${senderLabel} (VSL)`, signal.text, false);
-
-          if (window.ttsService && !isTtsMuted) {
-            // Speak ONLY the newly recognized gesture word/token, NOT the accumulated sentence from the beginning!
-            const tokenToSpeak = signal.word || (signal.text ? signal.text.trim().split(/\s+/).pop() : '');
-            if (tokenToSpeak) {
-              window.ttsService.speak(tokenToSpeak);
-            }
-          }
-        } else if (signal.kind === 'stt') {
-          const isFinal = signal.isFinal;
-          updateSubtitleDisplay(`🎙️ [${senderLabel} (Giọng nói)]: ${signal.text}${isFinal ? '' : '...'}`, isFinal ? 'STT Hoàn thành' : 'STT Đang nói...');
-
-          if (isFinal) {
-            addTranscriptLog(`${senderLabel} (STT)`, signal.text, false);
-          }
-        }
-        return;
-      }
-
-      // Forward ALL WebRTC signals (peer-joined, offer, answer, ice-candidate) to webRTCService
-      await webRTCService.handleIncomingSignal(signal, currentUserId);
-    });
 
     // Subscribe Realtime Broadcast Messages in Inline Chat
     window.supabaseService.subscribeChatRoom(roomId, (msg) => {
