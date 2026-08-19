@@ -1,15 +1,31 @@
 <!doctype html>
-<html class="light" lang="vi">
+<html lang="vi" class="light">
   <head>
-    <meta charset="utf-8" />
-    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <meta charset="UTF-8" />
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem("app_theme") === "dark")
+            document.documentElement.classList.add("dark");
+          else
+            document.documentElement.classList.remove("dark");
+        } catch (e) {}
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cuộc gọi Video | Sign Speak</title>
+    <!-- CDN Preconnect & DNS Prefetch for Fast MediaPipe & Font Loading -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block"
       rel="stylesheet"
     />
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -20,19 +36,53 @@
           theme: {
             extend: {
               colors: {
-                primary: "#0084FF",
-                background: "#FFFFFF",
-                surface: "#F0F2F5",
-                "on-surface": "#050505",
-                "on-surface-variant": "#65676B",
-                "outline-variant": "#E4E6EB",
-                error: "#FA3E3E",
-              },
-              borderRadius: {
-                DEFAULT: "0.25rem",
-                lg: "0.5rem",
-                xl: "16px",
-                full: "9999px",
+                "on-tertiary": "#ffffff",
+                "surface-container-high": "#e5e8f2",
+                surface: "#f8fafc",
+                "on-primary": "#ffffff",
+                "tertiary-fixed-dim": "#6dd2ff",
+                "on-surface": "#0f172a",
+                primary: "#005bb3",
+                "surface-variant": "#e2e8f0",
+                "on-surface-variant": "#64748b",
+                "on-secondary-container": "#fff6ff",
+                "surface-container-highest": "#e2e8f0",
+                "surface-container": "#f1f5f9",
+                "tertiary-fixed": "#bfe9ff",
+                "surface-container-low": "#f8fafc",
+                outline: "#717786",
+                "inverse-surface": "#2d3038",
+                "inverse-primary": "#a9c7ff",
+                "surface-tint": "#005db7",
+                error: "#ba1a1a",
+                "on-tertiary-fixed": "#001f2a",
+                "error-container": "#ffdad6",
+                tertiary: "#006482",
+                "on-primary-fixed": "#001b3d",
+                "tertiary-container": "#007ea4",
+                secondary: "#8300de",
+                background: "#f8fafc",
+                "on-tertiary-container": "#fbfdff",
+                "surface-container-lowest": "#ffffff",
+                "on-error-container": "#93000a",
+                "primary-container": "#0073df",
+                "secondary-fixed": "#f0dbff",
+                "on-tertiary-fixed-variant": "#004d65",
+                "primary-fixed": "#d6e3ff",
+                "on-primary-fixed-variant": "#00468c",
+                "on-background": "#0f172a",
+                "on-primary-container": "#fefcff",
+                "inverse-on-surface": "#eef0fb",
+                "surface-bright": "#f8fafc",
+                "secondary-fixed-dim": "#ddb7ff",
+                "surface-dim": "#d7dae4",
+                "secondary-container": "#9f32fe",
+                "on-error": "#ffffff",
+                "primary-fixed-dim": "#a9c7ff",
+                "outline-variant": "#c0c6d6",
+                "on-secondary-fixed": "#2c0050",
+                "on-secondary-fixed-variant": "#6900b3",
+                "on-secondary": "#ffffff",
               },
             },
           },
@@ -40,119 +90,116 @@
       } catch (_e) {}
     </script>
     <link rel="stylesheet" href="css/style.css" />
-
-    <!-- MediaPipe Hands CDN -->
-    <script
-      src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"
-      crossorigin="anonymous"
-    ></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
-      crossorigin="anonymous"
-    ></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"
-      crossorigin="anonymous"
-    ></script>
-
-    <!-- Supabase JS CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <!-- Services & Modules -->
     <script src="js/services/security_guard.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/services/supabase_client.js"></script>
+    <script src="js/services/push_notification_service.js"></script>
     <script src="js/services/global_call_listener.js"></script>
-    <script src="js/services/context_resolver.js"></script>
     <script src="js/services/webrtc_service.js"></script>
     <script src="js/services/tts_service.js"></script>
     <script src="js/services/stt_service.js"></script>
+    <script src="js/services/context_resolver.js"></script>
     <script src="js/cv/feature_extractor.js"></script>
     <script src="js/cv/dtw_classifier.js"></script>
     <script src="js/call_controller.js"></script>
   </head>
   <body
-    class="bg-background text-on-surface h-screen flex flex-col overflow-hidden"
+    class="flex flex-col h-screen overflow-hidden bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-white font-sans antialiased select-none"
   >
-    <!-- Header -->
-    <header
-      class="flex justify-between items-center w-full px-6 h-16 border-b border-outline-variant bg-white shrink-0 z-10"
+    <!-- Top Bar Navigation -->
+        <!-- Full-Screen Call Workspace Container -->
+    <div id="fullScreenCallWrapper" class="flex flex-col h-screen overflow-hidden">
+<header
+      class="h-14 md:h-16 px-4 md:px-6 bg-white/95 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0 z-30 shadow-sm"
     >
-      <div class="flex items-center gap-3">
-        <a
-          href="index.html"
-          class="p-2 hover:bg-surface rounded-full text-on-surface-variant transition-colors"
-          title="Quay về"
+      <div class="flex items-center gap-3 md:gap-4 min-w-0">
+        <button
+          id="minimizeCallBtn"
+          type="button"
+          class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
+          title="Thu nhỏ cuộc gọi (PiP / Cửa sổ nổi)"
         >
-          <span class="material-symbols-outlined">arrow_back</span>
-        </a>
-        <div class="flex flex-col">
-          <h1 class="text-base font-semibold">Cuộc gọi Video Sign Speak VSL</h1>
-          <div class="flex items-center gap-1.5">
-            <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+          <span class="material-symbols-outlined text-[20px]">picture_in_picture_alt</span>
+        </button>
+        <div class="flex flex-col min-w-0">
+          <h1 class="text-sm md:text-base font-bold text-slate-900 dark:text-white truncate">Cuộc gọi Video Sign Speak VSL</h1>
+          <div class="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
             <span
-              id="roomStatusLabel"
-              class="text-xs text-on-surface-variant font-medium tracking-wide"
-              >Đang kết nối WebRTC...</span
+              id="callRoomBadge"
+              class="font-mono text-primary font-bold truncate max-w-[150px] md:max-w-xs"
+              >Phòng: room_default</span
             >
+            <span class="text-slate-300 dark:text-slate-600">|</span>
+            <span
+              id="callStatusText"
+              class="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1 shrink-0"
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              <span>Đang chờ đối phương...</span>
+            </span>
+            <span
+              id="callTimerBadge"
+              class="hidden font-mono text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-md text-[11px] items-center gap-1"
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span id="callTimerLabel">00:00</span>
+            </span>
           </div>
         </div>
       </div>
 
-      <div class="flex items-center gap-2">
-        <button
-          id="switchSubtitleModeBtn"
-          class="px-3.5 py-1.5 rounded-full bg-surface text-primary border border-primary/20 text-xs font-bold hover:bg-primary/10 transition-all"
-        >
-          Glassmorphism Overlay 🔄
-        </button>
+      <!-- Header Action Controls -->
+      <div class="flex items-center gap-2 shrink-0">
+        <!-- Toggle Transcript Sidebar (Desktop only) -->
         <button
           id="toggleSidebarBtn"
-          class="px-3.5 py-1.5 rounded-full bg-surface text-slate-700 border border-slate-300 text-xs font-bold hover:bg-slate-100 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
-          title="Ẩn/Hiện Nhật Ký & Chat"
+          class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
         >
-          <span class="material-symbols-outlined text-[18px]">view_sidebar</span>
-          <span id="toggleSidebarLabel">Nhật ký & Chat</span>
+          <span class="material-symbols-outlined text-[18px]">chat</span>
+          <span id="toggleSidebarLabel">Nhật ký & Chat VSL</span>
         </button>
       </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-grow flex w-full overflow-hidden bg-surface relative">
-      <!-- Left: Video Area (75% width, expands to 100% when sidebar is collapsed) -->
-      <section
+    <!-- Main Workspace Container -->
+    <div class="flex-1 flex overflow-hidden relative">
+      <!-- Left Video Stream Area (75% / 100%) -->
+      <main
         id="videoSection"
-        class="w-[75%] h-full p-4 flex gap-4 relative transition-all duration-300"
+        class="w-full md:w-[75%] h-full flex flex-col p-3 md:p-4 gap-3 md:gap-4 relative transition-all duration-300 overflow-hidden bg-slate-100/70 dark:bg-slate-950"
       >
-        <div class="flex-1 flex flex-col gap-4">
-          <!-- Remote User Video -->
+        <!-- Video Grid Container: Mobile = Full Remote with Top-Right PiP Selfie; Desktop = 50/50 Split -->
+        <div class="flex-1 flex flex-col md:flex-row gap-3 md:gap-4 min-h-0 relative w-full h-full">
+          <!-- Remote Peer Video (Màn hình chính trên Mobile & Cột trái trên Desktop) -->
           <div
-            class="relative flex-1 video-container bg-black rounded-xl overflow-hidden shadow-md"
+            id="remoteVideoContainer"
+            class="relative w-full h-full md:flex-1 bg-slate-900 dark:bg-black rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-800 shadow-md"
           >
             <video
               id="remoteVideo"
               autoplay
               playsinline
-              class="w-full h-full object-cover absolute inset-0"
+              muted
+              class="w-full h-full object-cover"
             ></video>
-            <div class="absolute top-4 left-4 z-10">
+            <div class="absolute top-3 left-3 md:top-4 md:left-4 z-10 pointer-events-none">
               <span
-                id="remoteUserName"
-                class="bg-black/60 backdrop-blur-sm px-3.5 py-1.5 rounded-lg text-sm font-semibold text-white border border-white/10 shadow-lg"
+                id="remotePeerLabel"
+                class="bg-black/60 backdrop-blur-sm px-2.5 py-1 md:px-3.5 md:py-1.5 rounded-lg text-xs md:text-sm font-semibold text-white border border-white/10 shadow-lg"
                 >Người Đối Diện</span
               >
             </div>
           </div>
-        </div>
 
-        <div class="flex-1 flex flex-col gap-4">
-          <!-- Self Video (Hardware GPU Stream 60 FPS Preview + Transparent Canvas Skeleton Overlay) -->
+          <!-- Self Video (Khung nhỏ góc trên bên phải trên Mobile & Cột phải trên Desktop) -->
           <div
-            class="relative flex-1 video-container bg-black rounded-xl overflow-hidden border-2 border-primary/20 shadow-md"
+            id="localVideoContainer"
+            class="absolute top-3 right-3 w-28 h-40 sm:w-36 sm:h-48 md:relative md:top-auto md:right-auto md:w-auto md:h-full md:flex-1 z-20 rounded-xl md:rounded-2xl overflow-hidden border-2 border-white/60 md:border-primary/30 shadow-2xl md:shadow-md bg-black"
           >
-            <div
-              id="localCanvasWrapper"
-              class="relative w-full h-full"
-            >
+            <div id="localCanvasWrapper" class="relative w-full h-full mirror-mode">
               <video
                 id="webcamVideo"
                 autoplay
@@ -168,9 +215,9 @@
               ></canvas>
             </div>
 
-            <div class="absolute top-4 left-4 z-10">
+            <div class="absolute top-2 left-2 md:top-4 md:left-4 z-10 pointer-events-none">
               <span
-                class="bg-black/60 backdrop-blur-sm px-3.5 py-1.5 rounded-lg text-sm font-semibold text-white border border-white/10 shadow-lg"
+                class="bg-black/60 backdrop-blur-sm px-2 py-0.5 md:px-3.5 md:py-1.5 rounded-md md:rounded-lg text-[10px] md:text-sm font-semibold text-white border border-white/10 shadow-lg"
                 >Bạn</span
               >
             </div>
@@ -178,20 +225,31 @@
             <!-- LIVE PERFORMANCE DIAGNOSTIC HUD OVERLAY -->
             <div
               id="diagnosticHud"
-              class="absolute top-4 right-4 z-10 bg-black/80 border border-green-500/40 px-3 py-2 rounded-xl text-[11px] font-mono text-green-400 space-y-0.5 backdrop-blur-md shadow-xl"
+              class="absolute bottom-2 right-2 md:top-4 md:bottom-auto md:right-4 z-10 bg-black/80 border border-green-500/40 px-2 py-1 md:px-3 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-[11px] font-mono text-green-400 space-y-0.5 backdrop-blur-md shadow-xl transition-all"
             >
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1.5 md:gap-2">
                 <span>Cam:</span>
                 <span id="hudCamFps" class="font-bold text-white">60 FPS</span>
                 <span>|</span>
-                <span>AI Latency:</span>
+                <span>AI:</span>
                 <span id="hudAiMs" class="font-bold text-sky-400">12ms</span>
               </div>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1.5 md:gap-2">
                 <span>Tay:</span>
-                <span id="hudHandCount" class="font-bold text-amber-300"
-                  >0 tay</span
-                >
+                <span id="hudHandCount" class="font-bold text-amber-300">0 tay</span>
+              </div>
+              <div class="flex items-center gap-1.5 md:gap-2">
+                <span>Conf:</span>
+                <span id="hudConfidence" class="font-bold text-emerald-400">--</span>
+                <span>|</span>
+                <span>DTW:</span>
+                <span id="hudDtwDist" class="font-bold text-violet-400">--</span>
+              </div>
+              <div class="flex items-center gap-1.5 md:gap-2">
+                <span>Session:</span>
+                <span id="hudWordCount" class="font-bold text-amber-300">0 từ</span>
+                <span>|</span>
+                <span id="hudAccuracyRate" class="font-bold text-emerald-400">--%</span>
               </div>
             </div>
           </div>
@@ -199,172 +257,398 @@
 
         <!-- Floating Glassmorphism Subtitle Overlay -->
         <div
-          id="subtitleOverlay"
-          class="absolute bottom-6 left-4 w-[calc(100%-2rem)] px-6 z-20 pointer-events-none"
+          id="floatingSubtitleOverlay"
+          class="absolute bottom-[10px] md:bottom-[12px] left-3 right-3 md:left-4 md:right-4 z-20 pointer-events-none transition-all duration-300"
         >
           <div
-            class="glass-caption rounded-2xl p-4 text-center messenger-shadow border border-white/30 max-w-2xl mx-auto"
+            id="subtitleContainer"
+            class="w-full rounded-2xl py-3 px-4 md:py-3.5 md:px-6 text-center border border-white/20 dark:border-white/10 backdrop-blur-xl shadow-2xl transition-all duration-300"
+            style="background-color: rgba(0, 0, 0, 0.75)"
           >
             <p
-              class="text-lg font-bold text-white leading-relaxed drop-shadow-md"
+              id="subtitleText"
+              class="text-sm sm:text-base md:text-lg font-bold text-white drop-shadow-md leading-relaxed tracking-wide"
             >
-              <span id="subtitleText"
-                >Đang lắng nghe cử chỉ VSL và giọng nói...</span
-              >
+              <span>Đang lắng nghe cử chỉ VSL và giọng nói...</span>
               <span
                 id="subtitleConfidence"
-                class="text-xs text-sky-300 font-mono ml-2"
+                class="text-xs text-sky-300 font-mono ml-2 opacity-90"
                 >(VSL: 94%)</span
               >
             </p>
           </div>
         </div>
 
-        <!-- Fixed Subtitle Bar (Mode 2) -->
+        <!-- Fixed Bottom Subtitle Bar (Alternative accessibility view) -->
         <div
           id="fixedSubtitleBar"
-          class="hidden absolute bottom-0 left-0 right-0 bg-black/90 p-4 text-center border-t border-outline-variant z-20"
+          class="hidden absolute bottom-[10px] md:bottom-[12px] left-3 right-3 md:left-4 md:right-4 py-3 px-4 md:py-3.5 md:px-6 bg-black/90 dark:bg-black/95 rounded-2xl border border-slate-700/80 dark:border-slate-800 text-center z-20 transition-all duration-300 backdrop-blur-xl shadow-2xl"
         >
           <span
-            class="text-slate-400 text-xs font-semibold uppercase block mb-1"
+            class="text-[10px] uppercase font-bold text-slate-400 block mb-0.5 tracking-wider"
             >Băng Chuyền Phụ Đề Live:</span
           >
-          <p id="fixedSubtitleText" class="text-sky-300 text-lg font-bold">
-            Đang sẵn sàng...
+          <p
+            id="fixedSubtitleText"
+            class="text-sm sm:text-base md:text-lg font-extrabold text-sky-400 drop-shadow-sm tracking-wide"
+          >
+            Đang lắng nghe...
           </p>
         </div>
-      </section>
+      </main>
 
-      <!-- Right: Transcript Log & Realtime Chat (25% width, toggleable) -->
+      <!-- Right Multi-modal Transcript & Realtime Chat Sidebar (25%) -->
       <aside
         id="transcriptSidebar"
-        class="w-[25%] h-full bg-slate-50/50 dark:bg-[#1e2942] border-l border-slate-200/80 dark:border-slate-800 flex flex-col messenger-shadow transition-all duration-300"
+        class="hidden md:flex fixed md:relative inset-0 md:inset-auto z-40 md:z-auto w-full md:w-[25%] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex-col h-full shrink-0 transition-all duration-300 shadow-xl md:shadow-none"
       >
+        <!-- Sidebar Header -->
         <div
-          class="p-4 border-b border-slate-200/80 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-[#151e32] shrink-0"
+          class="h-14 px-4 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700/80 flex items-center justify-between shrink-0"
         >
-          <h2 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px] text-primary">chat</span>
+          <div class="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+            <span class="material-symbols-outlined text-primary text-base"
+              >forum</span
+            >
             <span>Nhật ký & Chat VSL</span>
-          </h2>
+          </div>
+          <!-- Close button on mobile overlay -->
+          <button
+            id="closeTranscriptMobileBtn"
+            class="md:hidden p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+          >
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
         </div>
 
-        <!-- Live Messages & Translation Stream -->
+        <!-- Transcript Feed Messages List -->
         <div
           id="transcriptList"
-          class="flex-grow overflow-y-auto p-4 space-y-3.5 bg-slate-50/50 dark:bg-[#1e2942]"
+          class="flex-1 overflow-y-auto p-4 space-y-3 text-xs bg-slate-50/50 dark:bg-slate-900/50"
         >
-          <div class="flex flex-col gap-1">
+          <!-- Welcome Message -->
+          <div class="flex flex-col gap-1 items-start">
             <div class="flex items-center gap-2 px-1">
-              <span
-                class="text-[10px] font-bold text-primary tracking-tight uppercase"
+              <span class="text-[10px] font-bold text-primary dark:text-sky-400 tracking-tight uppercase"
                 >HỆ THỐNG VSL</span
               >
-              <span class="text-[10px] text-slate-500 dark:text-slate-400 font-medium"
+              <span class="text-[10px] text-slate-400 dark:text-slate-500 font-medium"
                 >Hệ thống</span
               >
             </div>
             <div
-              class="bg-white dark:bg-[#151e32] rounded-2xl px-3.5 py-2 max-w-[95%] self-start messenger-shadow border border-slate-200/80 dark:border-slate-700/80"
+              class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 rounded-2xl px-3.5 py-2 max-w-[95%] messenger-shadow"
             >
-              <p class="text-xs leading-relaxed text-slate-900 dark:text-white">
-                Đã kết nối cuộc gọi Video VSL và sẵn sàng suy luận cử chỉ Realtime.
+              <p class="text-xs leading-relaxed">
+                Đã kết nối cuộc gọi Video VSL và sẵn sàng suy luận cử chỉ.
               </p>
             </div>
           </div>
         </div>
 
-        <!-- Realtime Inline Chat Input Form -->
-        <form
-          id="callChatForm"
-          class="p-3 bg-white dark:bg-[#151e32] border-t border-slate-200/80 dark:border-slate-800 flex items-center gap-2 shrink-0"
-        >
-          <input
-            id="callChatInput"
-            type="text"
-            placeholder="Nhập tin nhắn..."
-            class="flex-grow py-2 px-3.5 bg-slate-100/80 dark:bg-[#1e2942] border border-slate-200/80 dark:border-slate-700 rounded-full text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:bg-white dark:focus:bg-[#1e2942] placeholder:text-slate-400 transition-all"
-            autocomplete="off"
-          />
-          <button
-            id="sendCallChatBtn"
-            type="submit"
-            class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-all shrink-0 cursor-pointer"
-            title="Gửi tin nhắn"
-          >
-            <span class="material-symbols-outlined text-[16px]">send</span>
-          </button>
-        </form>
+        <!-- Quick Chat Input within Call -->
+        <div class="p-3 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 shrink-0">
+          <form id="callChatForm" class="flex items-center gap-2">
+            <input
+              id="callChatInput"
+              type="text"
+              class="flex-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/30"
+              placeholder="Nhập tin nhắn..."
+              autocomplete="off"
+            />
+            <button
+              type="submit"
+              class="w-8 h-8 rounded-full bg-primary hover:bg-primary/90 text-white flex items-center justify-center shrink-0 transition-transform active:scale-95 cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-[16px]">send</span>
+            </button>
+          </form>
+        </div>
       </aside>
-    </main>
+    </div>
 
-    <!-- Bottom Control Bar -->
+    <!-- Bottom Control Bar (Messenger & Google Meet Style) -->
     <footer
-      class="relative z-30 flex justify-center items-center w-full bg-white border-t border-outline-variant py-3 px-6 gap-4"
+      class="h-20 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800/80 px-6 flex items-center justify-center gap-3 md:gap-4 shrink-0 z-30 relative shadow-md"
     >
-      <div class="flex items-center gap-4 px-6 py-1 rounded-full">
-        <!-- Controls Center -->
-        <div class="flex items-center gap-3">
-          <!-- Mic Toggle -->
-          <button
-            id="toggleMicBtn"
-            class="w-12 h-12 flex items-center justify-center rounded-full bg-surface text-on-surface-variant hover:bg-outline-variant transition-all active:scale-95 shadow-sm"
-            title="Micro"
-          >
-            <span class="material-symbols-outlined text-[24px]">mic</span>
+      <!-- 1. Microphone Toggle -->
+      <button
+        id="toggleMicBtn"
+        class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-transparent flex items-center justify-center transition-all shadow-md active:scale-95 cursor-pointer"
+        title="Tắt / Bật Micro"
+      >
+        <span class="material-symbols-outlined text-[22px]">mic</span>
+      </button>
+
+      <!-- 2. Camera Toggle -->
+      <button
+        id="toggleCamBtn"
+        class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-transparent flex items-center justify-center transition-all shadow-md active:scale-95 cursor-pointer"
+        title="Tắt / Bật Camera"
+      >
+        <span class="material-symbols-outlined text-[22px]">videocam</span>
+      </button>
+
+      <!-- 3. STT Microphone Button -->
+      <button
+        id="toggleSTTBtn"
+        class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-transparent flex items-center justify-center transition-all shadow-md active:scale-95 cursor-pointer"
+        title="Dịch cử chỉ VSL & Giọng nói"
+      >
+        <span class="material-symbols-outlined text-[22px]">speech_to_text</span>
+      </button>
+
+      <!-- 4. Mobile Transcript Toggle Button -->
+      <button
+        id="mobileToggleTranscriptBtn"
+        class="md:hidden w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-transparent flex items-center justify-center transition-all shadow-md active:scale-95 cursor-pointer"
+        title="Nhật ký & Chat"
+      >
+        <span class="material-symbols-outlined text-[22px]">chat</span>
+      </button>
+
+      <!-- 5. More Options Button (•••) -->
+      <button
+        id="toggleMoreSheetBtn"
+        class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-transparent flex items-center justify-center transition-all shadow-md active:scale-95 cursor-pointer"
+        title="Tùy chọn mở rộng (•••)"
+      >
+        <span class="material-symbols-outlined text-[22px]">more_horiz</span>
+      </button>
+
+      <!-- 6. End Call Button -->
+      <button
+        id="endCallBtn"
+        class="w-12 h-12 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center shadow-lg shadow-rose-600/30 transition-all active:scale-95 cursor-pointer"
+        title="Kết thúc cuộc gọi"
+      >
+        <span class="material-symbols-outlined text-[22px]">call_end</span>
+      </button>
+    </footer>
+
+    <!-- Fixed Desktop Dropup Popover & Mobile Bottom Sheet for More Options Modal -->
+    <div
+      id="moreCallOptionsModal"
+      class="hidden fixed inset-0 md:inset-auto z-50 md:bottom-24 md:left-1/2 md:-translate-x-1/2 md:w-96 flex flex-col justify-end md:justify-start"
+    >
+      <!-- Mobile Backdrop Overlay (Hidden on Desktop) -->
+      <div id="moreOptionsBackdrop" class="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm"></div>
+
+      <!-- Popover Body Box -->
+      <div
+        class="relative w-full max-h-[85vh] md:max-h-none overflow-y-auto bg-white dark:bg-[#151e32] rounded-t-3xl md:rounded-3xl p-5 shadow-2xl border border-slate-200/80 dark:border-slate-800 z-10 space-y-4 animate-in fade-in slide-in-from-bottom-3 duration-200"
+      >
+        <!-- Inverted Caret Arrow (Chóp tam giác ngược hướng xuống nút More trên Desktop) -->
+        <div class="hidden md:block absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white dark:bg-[#151e32] border-r border-b border-slate-200/80 dark:border-slate-800 transform rotate-45 pointer-events-none"></div>
+
+        <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+          <h3 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-base">tune</span>
+            <span>Tùy chọn mở rộng cuộc gọi</span>
+          </h3>
+          <button id="closeMoreOptionsBtn" class="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer">
+            <span class="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+
+        <div class="more-modal-list flex flex-col gap-2.5">
+          <!-- 1. Switch Camera (Mobile only - desktop laptops have only 1 camera) -->
+          <button id="toggleMirrorBtn" class="sm:hidden flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all text-left w-full cursor-pointer">
+            <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[22px]">cameraswitch</span>
+            </div>
+            <div class="flex flex-col flex-1 min-w-0">
+              <span class="text-xs font-bold text-slate-900 dark:text-white">Đổi Camera</span>
+              <span class="text-[11px] text-slate-500">Chuyển giữa camera trước và camera sau</span>
+            </div>
           </button>
 
-          <!-- Cam Toggle -->
-          <button
-            id="toggleCamBtn"
-            class="w-12 h-12 flex items-center justify-center rounded-full bg-surface text-on-surface-variant hover:bg-outline-variant transition-all active:scale-95 shadow-sm"
-            title="Camera"
-          >
-            <span class="material-symbols-outlined text-[24px]">videocam</span>
+          <!-- 2. Toggle AI Skeleton Vector Overlay -->
+          <button id="toggleSkeletonBtn" class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all text-left w-full cursor-pointer">
+            <div id="skeletonBtnIcon" class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[22px]">polyline</span>
+            </div>
+            <div class="flex flex-col flex-1 min-w-0">
+              <span id="skeletonBtnLabel" class="text-xs font-bold text-slate-900 dark:text-white">Ẩn Vector AI</span>
+              <span class="text-[11px] text-slate-500">Ẩn/Hiện các điểm khung xương nhận diện</span>
+            </div>
           </button>
 
-          <!-- Flip Mirror Toggle -->
-          <button
-            id="toggleMirrorBtn"
-            class="w-12 h-12 flex items-center justify-center rounded-full bg-surface text-primary hover:bg-primary/10 transition-all active:scale-95 shadow-sm"
-            title="Đảo chiều Cam"
-          >
-            <span class="material-symbols-outlined text-[24px]"
-              >flip_camera_ios</span
-            >
+          <!-- 3. Remote Speaker Mute -->
+          <button id="toggleSpeakerBtn" class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all text-left w-full cursor-pointer">
+            <div class="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[22px]">volume_up</span>
+            </div>
+            <div class="flex flex-col flex-1 min-w-0">
+              <span class="text-xs font-bold text-slate-900 dark:text-white">Loa cuộc gọi</span>
+              <span class="text-[11px] text-slate-500">Tắt hoặc Bật tiếng loa người đối diện</span>
+            </div>
           </button>
 
-          <!-- STT Toggle -->
-          <button
-            id="toggleSTTBtn"
-            class="w-12 h-12 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-all active:scale-95 shadow-sm"
-            title="Speech-to-Text"
-          >
-            <span class="material-symbols-outlined text-[24px]"
-              >interpreter_mode</span
-            >
+          <!-- 4. TTS AI Voice -->
+          <button id="toggleTTSBtn" class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all text-left w-full cursor-pointer">
+            <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[22px]">record_voice_over</span>
+            </div>
+            <div class="flex flex-col flex-1 min-w-0">
+              <span class="text-xs font-bold text-slate-900 dark:text-white">Giọng đọc AI</span>
+              <span class="text-[11px] text-slate-500">Tự động đọc giọng nói từ cử chỉ VSL</span>
+            </div>
           </button>
 
-          <!-- TTS AI Voice Toggle -->
-          <button
-            id="toggleTTSBtn"
-            class="w-12 h-12 flex items-center justify-center rounded-full bg-surface text-primary hover:bg-primary/10 transition-all active:scale-95 shadow-sm"
-            title="Tắt/Bật giọng đọc AI dịch cử chỉ"
-          >
-            <span class="material-symbols-outlined text-[24px]">volume_up</span>
+          <!-- 5. Subtitle Mode Switcher -->
+          <button id="switchSubtitleModeBtn" class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all text-left w-full cursor-pointer">
+            <div id="subtitleModeIconWrapper" class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <span id="subtitleModeIcon" class="material-symbols-outlined text-[22px]">subtitles</span>
+            </div>
+            <div class="flex flex-col flex-1 min-w-0">
+              <span id="subtitleModeTitle" class="text-xs font-bold text-slate-900 dark:text-white">Chế độ: Kính mờ (Nổi)</span>
+              <span id="subtitleModeDesc" class="text-[11px] text-slate-500">Đang nổi trên màn hình video</span>
+            </div>
           </button>
-
-          <!-- End Call Button -->
-          <a
-            href="contacts.html"
-            id="endCallBtn"
-            class="w-16 h-12 flex items-center justify-center rounded-3xl bg-error text-white hover:opacity-90 transition-all active:scale-95 messenger-shadow shadow-red-500/30"
-            title="Kết thúc cuộc gọi"
-          >
-            <span class="material-symbols-outlined text-[28px]">call_end</span>
-          </a>
         </div>
       </div>
-    </footer>
+    </div>
+
+    </div>
+
+    <!-- Embedded App Browsing Viewport (Shown when Call is Minimized in Floating Mode) -->
+    <div id="embeddedAppFrameContainer" class="hidden fixed inset-0 z-40 bg-slate-50 dark:bg-slate-900">
+      <iframe id="embeddedAppFrame" src="about:blank" class="w-full h-full border-0"></iframe>
+    </div>
+
+    <!-- Draggable Floating Mini Call Widget (Mode 2: Floating In-App PiP Overlay) -->
+    <div
+      id="floatingMiniCallWidget"
+      class="hidden bg-slate-900 dark:bg-black rounded-2xl overflow-hidden border border-white/20 shadow-2xl z-50 flex flex-col"
+      style="bottom: 24px; right: 24px; width: 320px; height: 210px;"
+    >
+      <!-- Top Drag Bar & Title -->
+      <div
+        id="miniDragHandle"
+        class="mini-drag-handle h-8 px-3 bg-slate-900/90 backdrop-blur-md border-b border-white/10 flex items-center justify-between z-30 shrink-0 select-none cursor-grab active:cursor-grabbing"
+      >
+        <div class="flex items-center gap-1.5 min-w-0">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+          <span id="miniPartnerName" class="text-[11px] font-bold text-white truncate">Cuộc gọi VSL</span>
+        </div>
+        <div class="flex items-center gap-1 shrink-0">
+          <!-- Maximize Icon Button -->
+          <button
+            id="miniMaximizeHeaderBtn"
+            type="button"
+            class="p-1 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            title="Mở toàn màn hình"
+          >
+            <span class="material-symbols-outlined text-[16px]">open_in_full</span>
+          </button>
+          <!-- 3-Dots More Options Button -->
+          <button
+            id="miniMoreBtn"
+            type="button"
+            class="p-1 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            title="Tùy chọn cửa sổ (•••)"
+          >
+            <span class="material-symbols-outlined text-[16px]">more_vert</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Video Container -->
+      <div class="relative flex-1 bg-black overflow-hidden group">
+        <!-- Remote Video -->
+        <video id="miniRemoteVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+
+        <!-- Secondary Local Selfie PiP in Top Right -->
+        <div class="mini-selfie-pip mirror-mode">
+          <video id="miniLocalVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+        </div>
+
+        <!-- Live Subtitle Chip Overlay in Mini Widget -->
+        <div class="absolute bottom-2 left-2 right-2 z-20 pointer-events-none">
+          <div
+            id="miniSubtitleBadge"
+            class="bg-black/75 backdrop-blur-sm px-2.5 py-1 rounded-lg text-center border border-white/10 text-[11px] font-bold text-white shadow-md truncate"
+          >
+            <span id="miniSubtitleText">Đang lắng nghe cử chỉ VSL...</span>
+          </div>
+        </div>
+
+        <!-- Hover Controls Overlay (Appears on hover) -->
+        <div
+          id="miniActionOverlay"
+          class="mini-action-overlay absolute inset-0 bg-black/60 backdrop-blur-[2px] z-20 flex items-center justify-center gap-2 p-2"
+        >
+          <!-- Mini Mic Toggle -->
+          <button
+            id="miniToggleMicBtn"
+            type="button"
+            class="w-9 h-9 rounded-full bg-slate-800/90 text-white hover:bg-slate-700 flex items-center justify-center transition-all shadow-md active:scale-95 cursor-pointer"
+            title="Tắt / Bật Micro"
+          >
+            <span class="material-symbols-outlined text-[18px]">mic</span>
+          </button>
+          <!-- Mini Cam Toggle -->
+          <button
+            id="miniToggleCamBtn"
+            type="button"
+            class="w-9 h-9 rounded-full bg-slate-800/90 text-white hover:bg-slate-700 flex items-center justify-center transition-all shadow-md active:scale-95 cursor-pointer"
+            title="Tắt / Bật Camera"
+          >
+            <span class="material-symbols-outlined text-[18px]">videocam</span>
+          </button>
+          <!-- Mini End Call -->
+          <button
+            id="miniEndCallBtn"
+            type="button"
+            class="w-9 h-9 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center transition-all shadow-lg shadow-rose-600/40 active:scale-95 cursor-pointer"
+            title="Kết thúc cuộc gọi"
+          >
+            <span class="material-symbols-outlined text-[18px]">call_end</span>
+          </button>
+          <!-- Mini Maximize -->
+          <button
+            id="miniMaximizeBtn"
+            type="button"
+            class="w-9 h-9 rounded-full bg-primary hover:bg-primary/90 text-white flex items-center justify-center transition-all shadow-md active:scale-95 cursor-pointer"
+            title="Phóng to toàn màn hình"
+          >
+            <span class="material-symbols-outlined text-[18px]">fullscreen</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mode Switch Popup Menu from 3-dots (⋮) -->
+      <div
+        id="miniOptionsMenu"
+        class="hidden absolute top-9 right-2 w-56 bg-white dark:bg-[#151e32] rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800 z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2"
+      >
+        <button
+          id="miniModePopoutBtn"
+          type="button"
+          class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+        >
+          <span class="material-symbols-outlined text-primary text-[18px]">open_in_new</span>
+          <span>Mở cửa sổ riêng (Pop-out)</span>
+        </button>
+        <button
+          id="miniModeFloatingBtn"
+          type="button"
+          class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-xs font-bold text-primary bg-primary/10 transition-colors cursor-pointer"
+        >
+          <span class="material-symbols-outlined text-[18px]">picture_in_picture_alt</span>
+          <span>Màn hình thu nhỏ nổi (PiP)</span>
+        </button>
+        <div class="h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
+        <button
+          id="miniModeFullscreenBtn"
+          type="button"
+          class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+        >
+          <span class="material-symbols-outlined text-slate-500 text-[18px]">fullscreen</span>
+          <span>Phóng to toàn màn hình</span>
+        </button>
+      </div>
+    </div>
   </body>
 </html>
