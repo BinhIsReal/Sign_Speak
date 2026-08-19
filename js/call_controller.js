@@ -545,8 +545,7 @@ async function initCall() {
         }
       },
       currentUserId,
-      roleParam === 'caller',
-      isPolite
+      roleParam === 'caller'
     );
 
 

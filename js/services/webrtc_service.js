@@ -9,6 +9,7 @@ class WebRTCService {
     this.localStream = null;
     this.remoteStream = null;
     this.roomId = null;
+    this.offerCreated = false;
 
     // Multi-Region High Availability STUN & Active Metered TURN Relays
     this.iceConfig = {
@@ -23,66 +24,22 @@ class WebRTCService {
           ]
         },
         {
-          urls: 'turn:global.relay.metered.ca:80',
-          username: '19a41198dfa472d07e664267',
-          credential: '2Dl+anP4+2pT5LBN'
-        },
-        {
-          urls: 'turn:global.relay.metered.ca:80?transport=tcp',
-          username: '19a41198dfa472d07e664267',
-          credential: '2Dl+anP4+2pT5LBN'
-        },
-        {
-          urls: 'turn:global.relay.metered.ca:443',
-          username: '19a41198dfa472d07e664267',
-          credential: '2Dl+anP4+2pT5LBN'
-        },
-        {
-          urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+          urls: [
+            'turn:global.relay.metered.ca:80',
+            'turn:global.relay.metered.ca:80?transport=tcp',
+            'turn:global.relay.metered.ca:443',
+            'turns:global.relay.metered.ca:443?transport=tcp'
+          ],
           username: '19a41198dfa472d07e664267',
           credential: '2Dl+anP4+2pT5LBN'
         }
-      ],
-      iceCandidatePoolSize: 10,
-      iceTransportPolicy: 'all'
+      ]
     };
 
     this.onRemoteStreamCallback = null;
     this.onConnectionStateCallback = null;
     this.iceCandidatesQueue = [];
-    this._iceDisconnectedTimer = null;
   }
-
-  /**
-   * Fetch fresh TURN credentials from our server-side API.
-   * Falls back to STUN-only config if unavailable.
-   */
-  async fetchIceServers() {
-    try {
-      const response = await fetch('/api/ice-servers', {
-        signal: AbortSignal.timeout(6000)
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-      const data = await response.json();
-
-      // Support both {iceServers:[...]} and direct array formats
-      const servers = Array.isArray(data) ? data : (data.iceServers || []);
-
-      if (servers.length > 0) {
-        this.iceConfig.iceServers = servers;
-        const hasTurn = servers.some(s =>
-          [].concat(s.urls || s.url || []).some(u => u.startsWith('turn:') || u.startsWith('turns:'))
-        );
-        console.log(`[WebRTC] ICE servers loaded: ${servers.length} entries, TURN available: ${hasTurn}`);
-      } else {
-        console.warn('[WebRTC] API returned empty ICE servers, using fallback STUN');
-      }
-    } catch (err) {
-      console.warn('[WebRTC] fetchIceServers failed, using fallback STUN:', err.message);
-    }
-  }
-
 
   createFallbackStream(text = "Chưa cấp quyền Camera") {
     const canvas = document.createElement("canvas");
@@ -94,7 +51,6 @@ class WebRTCService {
       ctx.fillStyle = "#0f172a";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Counter-flip text so it renders correctly inside a CSS scaleX(-1) mirror wrapper
       ctx.save();
       ctx.scale(-1, 1);
       ctx.translate(-canvas.width, 0);
@@ -128,7 +84,6 @@ class WebRTCService {
         videoElement.srcObject = this.localStream;
       }
 
-      // If peerConnection is already active, attach or replace tracks immediately!
       if (this.peerConnection) {
         const senders = this.peerConnection.getSenders();
         this.localStream.getTracks().forEach(track => {
@@ -173,61 +128,38 @@ class WebRTCService {
   }
 
   /**
-   * Initialize PeerConnection and join room with W3C Perfect Negotiation.
-   * Fetches fresh TURN credentials from the server before connecting.
+   * Initialize PeerConnection and join room.
    */
-  async initPeerConnection(roomId, onRemoteStream, onStateChange, currentUserId = '', isCaller = false, isPolite = false) {
+  initPeerConnection(roomId, onRemoteStream, onStateChange, currentUserId = '', isCaller = false) {
     this.roomId = roomId;
     this.currentUserId = currentUserId;
     this.isCaller = isCaller;
-    this.isPolite = isPolite;
     this.onRemoteStreamCallback = onRemoteStream;
     this.onConnectionStateCallback = onStateChange;
     this.iceCandidatesQueue = [];
     this.offerCreated = false;
-    this.makingOffer = false;
-    clearTimeout(this._iceDisconnectedTimer);
-
-    // Fetch fresh TURN credentials before creating PeerConnection
-    await this.fetchIceServers();
 
     this.peerConnection = new RTCPeerConnection(this.iceConfig);
     this.remoteStream = new MediaStream();
 
-    // Add local tracks or add transceivers to guarantee sendrecv negotiation
-    if (this.localStream && this.localStream.getTracks().length > 0) {
+    // Add local tracks to peer connection
+    if (this.localStream) {
       this.localStream.getTracks().forEach(track => {
         this.peerConnection.addTrack(track, this.localStream);
       });
-    } else {
-      try {
-        this.peerConnection.addTransceiver('video', { direction: 'sendrecv' });
-        this.peerConnection.addTransceiver('audio', { direction: 'sendrecv' });
-      } catch (_e) {}
     }
 
     // Handle remote track received
     this.peerConnection.ontrack = event => {
-      console.log("[WebRTC] Remote track received:", event.track.kind, event.track.id);
-      
-      if (!this.remoteStream) {
-        this.remoteStream = new MediaStream();
-      }
-
-      if (!this.remoteStream.getTracks().some(t => t.id === event.track.id)) {
-        this.remoteStream.addTrack(event.track);
-      }
-
+      console.log("[WebRTC] Remote track received:", event.track.kind, event.streams);
       if (event.streams && event.streams[0]) {
-        event.streams[0].getTracks().forEach(t => {
-          if (!this.remoteStream.getTracks().some(existing => existing.id === t.id)) {
-            this.remoteStream.addTrack(t);
-          }
-        });
+        this.remoteStream = event.streams[0];
+      } else {
+        if (!this.remoteStream) this.remoteStream = new MediaStream();
+        if (!this.remoteStream.getTracks().some(t => t.id === event.track.id)) {
+          this.remoteStream.addTrack(event.track);
+        }
       }
-
-      const tracks = this.remoteStream.getTracks();
-      console.log(`[WebRTC] remoteStream tracks: [${tracks.map(t => `${t.kind}:${t.readyState}:${t.enabled}`).join(', ')}]`);
 
       if (this.onRemoteStreamCallback) {
         this.onRemoteStreamCallback(this.remoteStream);
@@ -237,96 +169,60 @@ class WebRTCService {
     // Handle ICE candidates
     this.peerConnection.onicecandidate = event => {
       if (event.candidate) {
-        console.log(`[WebRTC ICE Local Candidate]: type=${event.candidate.type}, protocol=${event.candidate.protocol}, address=${event.candidate.address || event.candidate.ip || 'hidden'}`);
         window.supabaseService.sendSignalingMessage({
           type: 'ice-candidate',
           candidate: event.candidate,
           senderId: this.currentUserId
         });
-      } else {
-        console.log('[WebRTC ICE Local Candidate Gathering Complete]');
       }
     };
 
-    // ICE gathering state log
-    this.peerConnection.onicegatheringstatechange = () => {
-      console.log(`[WebRTC ICE Gathering]: ${this.peerConnection.iceGatheringState}`);
-    };
-
-    // Handle ICE connection state — auto-restart on failure
-    this.peerConnection.oniceconnectionstatechange = () => {
-      const iceState = this.peerConnection.iceConnectionState;
-      console.log(`[WebRTC ICE State]: ${iceState}`);
-
-      if (iceState === 'connected' || iceState === 'completed') {
-        clearTimeout(this._iceDisconnectedTimer);
-        if (this.onConnectionStateCallback) this.onConnectionStateCallback('connected');
-      } else if (iceState === 'failed') {
-        console.warn("[WebRTC] ICE failed. Attempting ICE restart...");
-        if (!this.isPolite) {
-          setTimeout(() => this.createCallOffer(this.currentUserId, true), 500);
-        }
-      } else if (iceState === 'disconnected') {
-        console.warn("[WebRTC] ICE disconnected. Will restart if not recovered in 4s...");
-        this._iceDisconnectedTimer = setTimeout(() => {
-          if (this.peerConnection && this.peerConnection.iceConnectionState === 'disconnected') {
-            if (!this.isPolite) this.createCallOffer(this.currentUserId, true);
-          }
-        }, 4000);
-      }
-    };
-
-    // Handle overall connection state changes
+    // Handle connection state changes
     this.peerConnection.onconnectionstatechange = () => {
       const state = this.peerConnection.connectionState;
-      console.log(`[WebRTC Connection State]: ${state}`);
+      console.log(`[WebRTC State]: ${state}`);
       if (this.onConnectionStateCallback) {
         this.onConnectionStateCallback(state);
       }
     };
 
-    // Signal presence readiness
+    this.peerConnection.oniceconnectionstatechange = () => {
+      const iceState = this.peerConnection.iceConnectionState;
+      console.log(`[WebRTC ICE State]: ${iceState}`);
+      if (iceState === 'connected' || iceState === 'completed') {
+        if (this.onConnectionStateCallback) this.onConnectionStateCallback('connected');
+      }
+    };
+
+    // Announce presence to partner
     setTimeout(() => {
       window.supabaseService.sendSignalingMessage({
         type: 'peer-joined',
         senderId: this.currentUserId
       });
-      console.log("[WebRTC] Sent peer-joined. isCaller:", this.isCaller, "isPolite:", this.isPolite);
-    }, 600);
+    }, 500);
   }
 
   /**
-   * Handle incoming WebRTC signaling messages with Perfect Negotiation
+   * Handle incoming WebRTC signaling messages from Supabase Realtime
    */
   async handleIncomingSignal(signal, currentUserId = '') {
     if (!this.peerConnection || !signal) return;
     if (signal.senderId && currentUserId && signal.senderId === currentUserId) return;
 
     try {
-      const sigState = this.peerConnection.signalingState;
-
       if (signal.type === 'peer-joined') {
-        console.log("[WebRTC] Received peer-joined. isCaller:", this.isCaller, "isPolite:", this.isPolite, "sigState:", sigState);
-        // Impolite peer (caller) always initiates the offer
-        if (!this.isPolite) {
+        console.log("[WebRTC] Partner joined room.");
+        if (this.isCaller && !this.offerCreated) {
+          this.offerCreated = true;
           await this.createCallOffer(currentUserId);
         }
       } else if (signal.type === 'offer') {
-        const offerCollision = (this.makingOffer || sigState !== 'stable');
-
-        if (offerCollision) {
-          if (!this.isPolite) {
-            console.warn(`[WebRTC] Offer collision on impolite peer (state: ${sigState}), dropping incoming offer`);
-            return;
-          }
-          console.log(`[WebRTC] Offer collision on polite peer (state: ${sigState}), rolling back`);
-          try {
-            await this.peerConnection.setLocalDescription({ type: 'rollback' });
-          } catch (_rbErr) {
-            console.warn("[WebRTC] Rollback failed:", _rbErr.message);
-          }
+        console.log("[WebRTC] Received offer from caller, creating answer...");
+        if (this.peerConnection.signalingState !== 'stable') {
+          console.warn("[WebRTC] Ignoring offer — signalingState is not stable:", this.peerConnection.signalingState);
+          return;
         }
-
         await this.peerConnection.setRemoteDescription(new RTCSessionDescription(signal.offer));
         await this.processQueuedIceCandidates();
 
@@ -336,34 +232,29 @@ class WebRTCService {
         window.supabaseService.sendSignalingMessage({
           type: 'answer',
           answer: answer,
-          senderId: currentUserId || this.currentUserId
+          senderId: currentUserId
         });
-        console.log("[WebRTC] Answer generated & sent successfully!");
+        console.log("[WebRTC] Answer sent to caller.");
       } else if (signal.type === 'answer') {
-        if (sigState !== 'have-local-offer') {
-          console.warn(`[WebRTC] Ignoring answer in signalingState: ${sigState}`);
+        console.log("[WebRTC] Received answer from callee.");
+        if (this.peerConnection.signalingState !== 'have-local-offer') {
+          console.warn("[WebRTC] Ignoring answer — signalingState is not have-local-offer:", this.peerConnection.signalingState);
           return;
         }
         await this.peerConnection.setRemoteDescription(new RTCSessionDescription(signal.answer));
         await this.processQueuedIceCandidates();
-        console.log("[WebRTC] Remote answer accepted!");
       } else if (signal.type === 'ice-candidate') {
         if (signal.candidate) {
-          try {
-            console.log(`[WebRTC ICE Remote Candidate]: type=${signal.candidate.type || 'unknown'}, protocol=${signal.candidate.protocol || 'unknown'}`);
-            const candidate = new RTCIceCandidate(signal.candidate);
-            if (this.peerConnection.remoteDescription && this.peerConnection.remoteDescription.type) {
-              await this.peerConnection.addIceCandidate(candidate);
-            } else {
-              this.iceCandidatesQueue.push(candidate);
-            }
-          } catch (e) {
-            console.warn("[WebRTC] addIceCandidate warning:", e.message);
+          const candidate = new RTCIceCandidate(signal.candidate);
+          if (this.peerConnection.remoteDescription && this.peerConnection.remoteDescription.type) {
+            await this.peerConnection.addIceCandidate(candidate);
+          } else {
+            this.iceCandidatesQueue.push(candidate);
           }
         }
       }
     } catch (err) {
-      console.error("[WebRTC] Error handling signaling message:", err);
+      console.error("Lỗi khi xử lý tin nhắn WebRTC signaling:", err);
     }
   }
 
@@ -373,27 +264,25 @@ class WebRTCService {
       try {
         await this.peerConnection.addIceCandidate(candidate);
       } catch (e) {
-        console.warn("Lỗi addIceCandidate từ queue:", e.message);
+        console.warn("Lỗi addIceCandidate từ queue:", e);
       }
     }
   }
 
   /**
-   * Initiate call offer
+   * Initiate call offer — called by caller side
    */
-  async createCallOffer(currentUserId = '', iceRestart = false) {
+  async createCallOffer(currentUserId = '') {
     if (!this.peerConnection) return;
-    if (this.makingOffer) {
-      console.warn("[WebRTC] Already making offer, skipping duplicate createCallOffer");
+    if (this.offerCreated) {
+      console.warn('[WebRTC] createCallOffer skipped — offer already created for this session.');
       return;
     }
+
+    this.offerCreated = true;
     try {
-      this.makingOffer = true;
-      const offer = await this.peerConnection.createOffer({
-        offerToReceiveAudio: true,
-        offerToReceiveVideo: true,
-        iceRestart: iceRestart
-      });
+      console.log('[WebRTC] Creating call offer...');
+      const offer = await this.peerConnection.createOffer();
       await this.peerConnection.setLocalDescription(offer);
 
       window.supabaseService.sendSignalingMessage({
@@ -401,11 +290,10 @@ class WebRTCService {
         offer: offer,
         senderId: currentUserId || this.currentUserId
       });
-      console.log(`[WebRTC] Call offer sent! (iceRestart: ${iceRestart})`);
+      console.log('[WebRTC] Offer sent to callee.');
     } catch (err) {
-      console.error("[WebRTC] Error creating offer:", err);
-    } finally {
-      this.makingOffer = false;
+      this.offerCreated = false;
+      console.error('Lỗi khi khởi tạo offer:', err);
     }
   }
 
@@ -413,7 +301,6 @@ class WebRTCService {
    * End call and release media resources
    */
   endCall() {
-    clearTimeout(this._iceDisconnectedTimer);
     if (this.peerConnection) {
       this.peerConnection.close();
       this.peerConnection = null;
@@ -422,6 +309,7 @@ class WebRTCService {
       this.localStream.getTracks().forEach(track => track.stop());
       this.localStream = null;
     }
+    this.offerCreated = false;
     console.log("Đã kết thúc cuộc gọi WebRTC.");
   }
 }
