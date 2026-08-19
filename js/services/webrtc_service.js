@@ -10,17 +10,37 @@ class WebRTCService {
     this.remoteStream = null;
     this.roomId = null;
 
-    // ICE config - dynamically loaded via fetchIceServers() before each connection
-    // Fallback config used if API call fails
+    // Multi-Region High Availability STUN & Active Metered TURN Relays
     this.iceConfig = {
       iceServers: [
         {
           urls: [
+            'stun:stun.relay.metered.ca:80',
             'stun:stun.l.google.com:19302',
             'stun:stun1.l.google.com:19302',
             'stun:stun2.l.google.com:19302',
-            'stun:stun.cloudflare.com:3478',
+            'stun:stun.cloudflare.com:3478'
           ]
+        },
+        {
+          urls: 'turn:global.relay.metered.ca:80',
+          username: '19a41198dfa472d07e664267',
+          credential: '2Dl+anP4+2pT5LBN'
+        },
+        {
+          urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+          username: '19a41198dfa472d07e664267',
+          credential: '2Dl+anP4+2pT5LBN'
+        },
+        {
+          urls: 'turn:global.relay.metered.ca:443',
+          username: '19a41198dfa472d07e664267',
+          credential: '2Dl+anP4+2pT5LBN'
+        },
+        {
+          urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+          username: '19a41198dfa472d07e664267',
+          credential: '2Dl+anP4+2pT5LBN'
         }
       ],
       iceCandidatePoolSize: 10,

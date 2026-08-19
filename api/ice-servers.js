@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Vercel Serverless API Route: /api/ice-servers
  * Returns dynamic TURN credentials from Metered.ca.
  * Credentials are stored in Vercel environment variables, never exposed client-side.
@@ -19,16 +19,37 @@ export default async function handler(req, res) {
   const apiKey = process.env.METERED_API_KEY;
   const appName = process.env.METERED_APP_NAME;
 
-  // Fallback config if env vars not configured yet
+  // Fallback config with real active Metered.ca TURN credentials
   const fallbackConfig = {
     iceServers: [
       {
         urls: [
+          'stun:stun.relay.metered.ca:80',
           'stun:stun.l.google.com:19302',
           'stun:stun1.l.google.com:19302',
           'stun:stun2.l.google.com:19302',
           'stun:stun.cloudflare.com:3478',
         ]
+      },
+      {
+        urls: 'turn:global.relay.metered.ca:80',
+        username: '19a41198dfa472d07e664267',
+        credential: '2Dl+anP4+2pT5LBN'
+      },
+      {
+        urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+        username: '19a41198dfa472d07e664267',
+        credential: '2Dl+anP4+2pT5LBN'
+      },
+      {
+        urls: 'turn:global.relay.metered.ca:443',
+        username: '19a41198dfa472d07e664267',
+        credential: '2Dl+anP4+2pT5LBN'
+      },
+      {
+        urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+        username: '19a41198dfa472d07e664267',
+        credential: '2Dl+anP4+2pT5LBN'
       }
     ]
   };
