@@ -388,7 +388,7 @@ async function initCall() {
     }
     const isPolite = (currentUserId > targetPartnerId) || (roleParam === 'callee');
 
-    webRTCService.initPeerConnection(
+    await webRTCService.initPeerConnection(
       roomId,
       (remoteStream) => {
         console.log("[WebRTC] onRemoteStream event fired with tracks:", remoteStream ? remoteStream.getTracks().map(t => `${t.kind}:${t.readyState}`) : 'none');

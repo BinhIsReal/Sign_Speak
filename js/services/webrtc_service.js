@@ -10,8 +10,8 @@ class WebRTCService {
     this.remoteStream = null;
     this.roomId = null;
 
-    // STUN servers only - TURN relay via Cloudflare & Metered
-    // NOTE: openrelay is unreliable public relay. Replace with real TURN credentials for production.
+    // ICE config - dynamically loaded via fetchIceServers() before each connection
+    // Fallback config used if API call fails
     this.iceConfig = {
       iceServers: [
         {
@@ -19,39 +19,8 @@ class WebRTCService {
             'stun:stun.l.google.com:19302',
             'stun:stun1.l.google.com:19302',
             'stun:stun2.l.google.com:19302',
-            'stun:stun3.l.google.com:19302',
-            'stun:stun4.l.google.com:19302',
             'stun:stun.cloudflare.com:3478',
-            'stun:stun.services.mozilla.com:3478',
-            'stun:stun.ekiga.net',
-            'stun:stun.ideasip.com',
-            'stun:stun.schlund.de',
-            'stun:stun.voiparound.com',
-            'stun:stun.voipbuster.com',
-            'stun:stun.voipstunt.com'
           ]
-        },
-        {
-          urls: [
-            'turn:openrelay.metered.ca:80',
-            'turn:openrelay.metered.ca:80?transport=tcp',
-            'turn:openrelay.metered.ca:443',
-            'turn:openrelay.metered.ca:443?transport=tcp',
-            'turns:openrelay.metered.ca:443',
-            'turns:openrelay.metered.ca:443?transport=tcp',
-          ],
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: [
-            'turn:global.relay.metered.ca:80',
-            'turn:global.relay.metered.ca:80?transport=tcp',
-            'turn:global.relay.metered.ca:443',
-            'turns:global.relay.metered.ca:443',
-          ],
-          username: 'e8dd65f04b36a05dbf4e5e5b',
-          credential: 'uBt6PXXj8nMc4vOe'
         }
       ],
       iceCandidatePoolSize: 10,
@@ -63,6 +32,37 @@ class WebRTCService {
     this.iceCandidatesQueue = [];
     this._iceDisconnectedTimer = null;
   }
+
+  /**
+   * Fetch fresh TURN credentials from our server-side API.
+   * Falls back to STUN-only config if unavailable.
+   */
+  async fetchIceServers() {
+    try {
+      const response = await fetch('/api/ice-servers', {
+        signal: AbortSignal.timeout(6000)
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const data = await response.json();
+
+      // Support both {iceServers:[...]} and direct array formats
+      const servers = Array.isArray(data) ? data : (data.iceServers || []);
+
+      if (servers.length > 0) {
+        this.iceConfig.iceServers = servers;
+        const hasTurn = servers.some(s =>
+          [].concat(s.urls || s.url || []).some(u => u.startsWith('turn:') || u.startsWith('turns:'))
+        );
+        console.log(`[WebRTC] ICE servers loaded: ${servers.length} entries, TURN available: ${hasTurn}`);
+      } else {
+        console.warn('[WebRTC] API returned empty ICE servers, using fallback STUN');
+      }
+    } catch (err) {
+      console.warn('[WebRTC] fetchIceServers failed, using fallback STUN:', err.message);
+    }
+  }
+
 
   createFallbackStream(text = "Chưa cấp quyền Camera") {
     const canvas = document.createElement("canvas");
@@ -153,9 +153,10 @@ class WebRTCService {
   }
 
   /**
-   * Initialize PeerConnection and join room with W3C Perfect Negotiation
+   * Initialize PeerConnection and join room with W3C Perfect Negotiation.
+   * Fetches fresh TURN credentials from the server before connecting.
    */
-  initPeerConnection(roomId, onRemoteStream, onStateChange, currentUserId = '', isCaller = false, isPolite = false) {
+  async initPeerConnection(roomId, onRemoteStream, onStateChange, currentUserId = '', isCaller = false, isPolite = false) {
     this.roomId = roomId;
     this.currentUserId = currentUserId;
     this.isCaller = isCaller;
@@ -166,6 +167,9 @@ class WebRTCService {
     this.offerCreated = false;
     this.makingOffer = false;
     clearTimeout(this._iceDisconnectedTimer);
+
+    // Fetch fresh TURN credentials before creating PeerConnection
+    await this.fetchIceServers();
 
     this.peerConnection = new RTCPeerConnection(this.iceConfig);
     this.remoteStream = new MediaStream();
