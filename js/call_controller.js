@@ -285,20 +285,26 @@ async function initCall() {
     if (miniPartnerName) miniPartnerName.innerText = resolvedPartnerName;
 
     // User Session Context for Call Signaling
-    const roleParam = urlParams.get('role') || 'caller';
+    const roleParam = urlParams.get('role');
     const currentUser = await window.supabaseService.getCurrentUser();
     let currentUserId = currentUser ? currentUser.id : (localStorage.getItem('user_id') || sessionStorage.getItem('call_user_id'));
     
     const userIds = roomId.replace('room_', '').split('_');
-    if (userIds.length >= 2) {
-      if (!currentUserId || (currentUserId !== userIds[0] && currentUserId !== userIds[1])) {
-        currentUserId = (roleParam === 'caller') ? userIds[0] : userIds[1];
-      }
-    }
     if (!currentUserId) {
-      currentUserId = 'usr_' + Math.random().toString(36).substring(2, 9) + Date.now();
+      currentUserId = (roleParam === 'callee') ? (userIds[1] || 'usr_b_' + Date.now()) : (userIds[0] || 'usr_a_' + Date.now());
     }
     sessionStorage.setItem('call_user_id', currentUserId);
+
+    let targetPartnerId = '';
+    if (Array.isArray(userIds) && userIds.length >= 2) {
+      targetPartnerId = userIds.find(id => id && id !== currentUserId) || (currentUserId === userIds[0] ? userIds[1] : userIds[0]);
+    }
+
+    // Deterministic role determination:
+    // If role parameter is in URL, respect it ('caller' vs 'callee').
+    // If no role parameter, userIds[0] is caller, userIds[1] is callee.
+    const isCaller = roleParam ? (roleParam === 'caller') : (currentUserId === userIds[0]);
+    console.log(`[Call Init] Current User: ${currentUserId}, Partner: ${targetPartnerId}, isCaller: ${isCaller}`);
 
     let currentUserName = currentUser ? (currentUser.user_metadata?.display_name || 'Tôi') : (localStorage.getItem('user_full_name') || localStorage.getItem('user_display_name') || 'Tôi');
     let currentUserRole = currentUser ? (currentUser.user_metadata?.role || 'deaf') : (localStorage.getItem('user_role') || 'deaf');
@@ -545,7 +551,7 @@ async function initCall() {
         }
       },
       currentUserId,
-      roleParam === 'caller'
+      isCaller
     );
 
 
@@ -574,7 +580,7 @@ async function initCall() {
     });
 
     // If caller, send call notification to partner & create WebRTC offer
-    if (roleParam === 'caller') {
+    if (isCaller) {
       let targetPartnerId = '';
       const userIds = roomId.replace('room_', '').split('_');
       if (userIds.length >= 2) {

@@ -139,6 +139,8 @@ class WebRTCService {
     this.iceCandidatesQueue = [];
     this.offerCreated = false;
 
+    console.log(`[WebRTC Init] PeerConnection starting for user: ${currentUserId}, isCaller: ${isCaller}, roomId: ${roomId}`);
+
     this.peerConnection = new RTCPeerConnection(this.iceConfig);
     this.remoteStream = new MediaStream();
 
@@ -147,6 +149,7 @@ class WebRTCService {
       this.localStream.getTracks().forEach(track => {
         this.peerConnection.addTrack(track, this.localStream);
       });
+      console.log(`[WebRTC Init] Added ${this.localStream.getTracks().length} local tracks to PeerConnection`);
     }
 
     // Handle remote track received
@@ -169,6 +172,7 @@ class WebRTCService {
     // Handle ICE candidates
     this.peerConnection.onicecandidate = event => {
       if (event.candidate) {
+        console.log(`[WebRTC ICE Local Candidate]: type=${event.candidate.type}, protocol=${event.candidate.protocol}`);
         window.supabaseService.sendSignalingMessage({
           type: 'ice-candidate',
           candidate: event.candidate,
@@ -196,11 +200,12 @@ class WebRTCService {
 
     // Announce presence to partner
     setTimeout(() => {
+      console.log(`[WebRTC] Broadcasting peer-joined signal for user: ${this.currentUserId}`);
       window.supabaseService.sendSignalingMessage({
         type: 'peer-joined',
         senderId: this.currentUserId
       });
-    }, 500);
+    }, 600);
   }
 
   /**
