@@ -453,12 +453,6 @@ async function initCall() {
     });
 
     // WebRTC Peer Connection & Remote Video Stream Setup
-    let targetPartnerId = '';
-    if (Array.isArray(userIds) && userIds.length >= 2) {
-      targetPartnerId = userIds.find(id => id && id !== currentUserId) || userIds[1];
-    }
-    const isPolite = (currentUserId > targetPartnerId) || (roleParam === 'callee');
-
     await webRTCService.initPeerConnection(
       roomId,
       (remoteStream) => {
