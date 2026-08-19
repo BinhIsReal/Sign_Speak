@@ -212,9 +212,8 @@ class WebRTCService {
 
     try {
       if (signal.type === 'peer-joined') {
-        console.log("[WebRTC] Partner joined room.");
-        if (this.isCaller && !this.offerCreated) {
-          this.offerCreated = true;
+        console.log("[WebRTC] Partner joined room. isCaller:", this.isCaller, "offerCreated:", this.offerCreated);
+        if (this.isCaller) {
           await this.createCallOffer(currentUserId);
         }
       } else if (signal.type === 'offer') {
@@ -282,7 +281,10 @@ class WebRTCService {
     this.offerCreated = true;
     try {
       console.log('[WebRTC] Creating call offer...');
-      const offer = await this.peerConnection.createOffer();
+      const offer = await this.peerConnection.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true
+      });
       await this.peerConnection.setLocalDescription(offer);
 
       window.supabaseService.sendSignalingMessage({

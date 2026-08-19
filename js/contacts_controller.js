@@ -1,45 +1,48 @@
 /**
  * Contacts Controller for Sign_Speak
  * Handles Global Search, Friends Tabs, Notification Bell Dropdown, Realtime Friend Requests & Live Toast Messages with XSS Protection.
- * 100% Dynamic Rendering - NO FAKE MOCK DATA.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
-  const searchInput = document.getElementById('searchInput');
-  const contactsGrid = document.getElementById('contactsGrid');
-  const suggestedGrid = document.getElementById('suggestedGrid');
-  const onlineStrip = document.getElementById('onlineStrip');
-  const tabFriendsBtn = document.getElementById('tabFriendsBtn');
-  const tabRequestsBtn = document.getElementById('tabRequestsBtn');
-  const requestsCountBadge = document.getElementById('requestsCountBadge');
-  const notifBellBtn = document.getElementById('notifBellBtn');
-  const notifBadgeCount = document.getElementById('notifBadgeCount');
-  const notifDropdown = document.getElementById('notifDropdown');
-  const notifDropdownCount = document.getElementById('notifDropdownCount');
-  const notifDropdownList = document.getElementById('notifDropdownList');
-  const notifToast = document.getElementById('notifToast');
+document.addEventListener("DOMContentLoaded", () => {
+  const searchInput = document.getElementById("searchInput");
+  const contactsGrid = document.getElementById("contactsGrid");
+  const suggestedGrid = document.getElementById("suggestedGrid");
+  const onlineStrip = document.getElementById("onlineStrip");
+  const tabFriendsBtn = document.getElementById("tabFriendsBtn");
+  const tabRequestsBtn = document.getElementById("tabRequestsBtn");
+  const requestsCountBadge = document.getElementById("requestsCountBadge");
+  const notifBellBtn = document.getElementById("notifBellBtn");
+  const notifBadgeCount = document.getElementById("notifBadgeCount");
+  const notifDropdown = document.getElementById("notifDropdown");
+  const notifDropdownCount = document.getElementById("notifDropdownCount");
+  const notifDropdownList = document.getElementById("notifDropdownList");
+  const notifToast = document.getElementById("notifToast");
 
-  const escape = window.securityGuard ? window.securityGuard.escapeHTML.bind(window.securityGuard) : (s => s);
-  const sanitize = window.securityGuard ? window.securityGuard.sanitizeInput.bind(window.securityGuard) : (s => s);
+  const escape = window.securityGuard
+    ? window.securityGuard.escapeHTML.bind(window.securityGuard)
+    : (s) => s;
+  const sanitize = window.securityGuard
+    ? window.securityGuard.sanitizeInput.bind(window.securityGuard)
+    : (s) => s;
 
-  let currentTab = 'friends';
+  let currentTab = "friends";
 
   async function updatePendingBadges() {
     const count = await window.supabaseService.getPendingRequestsCount();
     if (requestsCountBadge) {
       if (count > 0) {
-        requestsCountBadge.classList.remove('hidden');
+        requestsCountBadge.classList.remove("hidden");
         requestsCountBadge.innerText = count;
       } else {
-        requestsCountBadge.classList.add('hidden');
+        requestsCountBadge.classList.add("hidden");
       }
     }
     if (notifBadgeCount) {
       if (count > 0) {
-        notifBadgeCount.classList.remove('hidden');
+        notifBadgeCount.classList.remove("hidden");
         notifBadgeCount.innerText = count;
       } else {
-        notifBadgeCount.classList.add('hidden');
+        notifBadgeCount.classList.add("hidden");
       }
     }
 
@@ -53,70 +56,95 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function renderNotificationDropdown() {
     if (!notifDropdownList) return;
-    const requests = await window.supabaseService.searchGlobalUsers('', 'requests');
-    const incomingRequests = requests.filter(r => r.friendStatus === 'pending_received');
+    const requests = await window.supabaseService.searchGlobalUsers(
+      "",
+      "requests",
+    );
+    const incomingRequests = requests.filter(
+      (r) => r.friendStatus === "pending_received",
+    );
 
     if (!incomingRequests || incomingRequests.length === 0) {
       notifDropdownList.innerHTML = `
-        <div class="py-6 text-center text-slate-400 text-xs font-medium">
-          Không có lời mời kết bạn mới nào.
+        <div class="py-7 px-4 text-center space-y-2">
+          <div class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center mx-auto">
+            <span class="material-symbols-outlined text-[24px]">mark_email_read</span>
+          </div>
+          <p class="text-xs font-bold text-slate-700 dark:text-slate-200">Không có lời mời nào</p>
+          <p class="text-[11px] text-slate-400 dark:text-slate-500">Bạn đã xem hết tất cả lời mời kết bạn.</p>
         </div>
       `;
       return;
     }
 
-    notifDropdownList.innerHTML = incomingRequests.map(r => `
-      <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200/60 flex items-center justify-between gap-2">
-        <div class="min-w-0 flex-1">
-          <p class="text-xs font-bold text-slate-900 truncate">${escape(r.display_name)}</p>
-          <p class="text-[11px] font-mono font-bold text-primary truncate">${escape(r.username)}</p>
+    notifDropdownList.innerHTML = incomingRequests
+      .map(
+        (r) => `
+      <div class="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between gap-3 shadow-sm hover:border-primary/40 transition-all">
+        <div class="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden">
+          ${r.avatar_url ? `<img src="${escape(r.avatar_url)}" class="w-full h-full object-cover" />` : escape(r.avatar || 'US')}
         </div>
-        <div class="flex items-center gap-1 shrink-0">
-          <button data-notif-action="accept" data-id="${escape(r.id)}" class="px-2.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-sm">
-            Chấp nhận
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-bold text-slate-900 dark:text-white truncate">${escape(r.display_name)}</p>
+          <p class="text-[11px] font-mono font-semibold text-primary dark:text-sky-400 truncate">${escape(r.username)}</p>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button data-notif-action="accept" data-id="${escape(r.id)}" class="px-2.5 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-sm flex items-center gap-1 active:scale-95 transition-all cursor-pointer" title="Đồng ý">
+            <span class="material-symbols-outlined text-[14px]">check</span>
+            <span>Đồng ý</span>
           </button>
-          <button data-notif-action="unfriend" data-id="${escape(r.id)}" class="px-2 py-1 rounded-full bg-slate-200 hover:bg-rose-100 hover:text-rose-700 text-slate-600 font-bold text-[11px]">
-            Hủy
+          <button data-notif-action="unfriend" data-id="${escape(r.id)}" class="px-2 py-1.5 rounded-full bg-slate-200 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-700 dark:hover:bg-rose-950/60 dark:hover:text-rose-400 text-slate-600 dark:text-slate-300 font-bold text-[11px] active:scale-95 transition-all cursor-pointer" title="Từ chối">
+            <span class="material-symbols-outlined text-[14px]">close</span>
           </button>
         </div>
       </div>
-    `).join('');
+    `,
+      )
+      .join("");
 
-    notifDropdownList.querySelectorAll('button[data-notif-action]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const action = e.currentTarget.getAttribute('data-notif-action');
-        const targetId = e.currentTarget.getAttribute('data-id');
+    notifDropdownList
+      .querySelectorAll("button[data-notif-action]")
+      .forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          const action = e.currentTarget.getAttribute("data-notif-action");
+          const targetId = e.currentTarget.getAttribute("data-id");
 
-        if (action === 'accept') {
-          const res = await window.supabaseService.acceptFriendRequest(targetId);
-          showToast(res.message || "🎉 Đã chấp nhận lời mời kết bạn!");
-        } else if (action === 'unfriend') {
-          const res = await window.supabaseService.removeFriendship(targetId);
-          showToast(res.message || "Đã hủy lời mời kết bạn.");
-        }
-        await loadContacts();
+          if (action === "accept") {
+            const res =
+              await window.supabaseService.acceptFriendRequest(targetId);
+            showToast(res.message || "🎉 Đã chấp nhận lời mời kết bạn!");
+          } else if (action === "unfriend") {
+            const res = await window.supabaseService.removeFriendship(targetId);
+            showToast(res.message || "Đã hủy lời mời kết bạn.");
+          }
+          await loadContacts();
+        });
       });
-    });
   }
 
-  function showToast(message, type = 'success') {
+  function showToast(message, type = "success") {
     if (!notifToast) return;
-    notifToast.classList.remove('hidden');
+    notifToast.classList.remove("hidden");
     notifToast.innerText = escape(message);
-    if (type === 'success') {
-      notifToast.className = "fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-slate-900 text-white font-bold text-xs shadow-2xl border border-slate-700 animate-bounce";
+    if (type === "success") {
+      notifToast.className =
+        "fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-slate-900 text-white font-bold text-xs shadow-2xl border border-slate-700 animate-bounce";
     } else {
-      notifToast.className = "fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-rose-900 text-white font-bold text-xs shadow-2xl border border-rose-700";
+      notifToast.className =
+        "fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-rose-900 text-white font-bold text-xs shadow-2xl border border-rose-700";
     }
     setTimeout(() => {
-      notifToast.classList.add('hidden');
+      notifToast.classList.add("hidden");
     }, 3500);
   }
 
   async function loadContacts() {
-    const query = searchInput ? sanitize(searchInput.value) : '';
-    const filterToUse = query ? 'all' : currentTab;
-    const contacts = await window.supabaseService.searchGlobalUsers(query, filterToUse);
+    const query = searchInput ? sanitize(searchInput.value) : "";
+    const filterToUse = query ? "all" : currentTab;
+    const contacts = await window.supabaseService.searchGlobalUsers(
+      query,
+      filterToUse,
+    );
     renderContactsList(contacts, query);
 
     const suggestions = await window.supabaseService.getSuggestedFriends();
@@ -128,7 +156,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderOnlineStrip(allContacts) {
     if (!onlineStrip) return;
-    const activeFriends = (allContacts || []).filter(c => c.friendStatus === 'accepted');
+    const activeFriends = (allContacts || []).filter(
+      (c) => c.friendStatus === "accepted" && (c.online === true || (window.supabaseService && window.supabaseService.isUserOnline(c))),
+    );
 
     if (!activeFriends || activeFriends.length === 0) {
       onlineStrip.innerHTML = `
@@ -139,39 +169,56 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    onlineStrip.innerHTML = activeFriends.map(c => `
+    onlineStrip.innerHTML = activeFriends
+      .map((c) => {
+        const cAvt = c.avatar_url || c.avatar;
+        const isImgAvt =
+          cAvt &&
+          (cAvt.startsWith("http") ||
+            cAvt.startsWith("data:image") ||
+            cAvt.includes("/"));
+
+        return `
       <a href="index.html?chat_with=${encodeURIComponent(c.id)}" class="flex flex-col items-center gap-2 flex-shrink-0 group cursor-pointer" title="Nhắn tin với ${escape(c.display_name)}">
         <div class="relative">
-          <div class="w-14 h-14 rounded-full bg-primary text-white font-bold text-base flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-200 border-2 border-white">
-            ${escape(c.avatar || 'US')}
+          <div class="w-14 h-14 rounded-full bg-primary text-white font-bold text-base flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-200 border-2 border-white overflow-hidden">
+            ${
+              isImgAvt
+                ? `<img src="${escape(cAvt)}" class="w-full h-full object-cover rounded-full" alt="${escape(c.display_name)}" />`
+                : escape(c.avatar || "US")
+            }
           </div>
-          <span class="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full shadow-sm"></span>
+          <span class="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full shadow-sm z-10"></span>
         </div>
         <span class="text-xs font-semibold text-slate-700 truncate w-20 text-center">${escape(c.display_name)}</span>
       </a>
-    `).join('');
+    `;
+      })
+      .join("");
   }
 
-  function renderContactsList(contacts, query = '') {
+  function renderContactsList(contacts, query = "") {
     if (!contactsGrid) return;
 
     if (!contacts || contacts.length === 0) {
       const isSearchActive = Boolean(query);
-      let emptyTitle = 'Bạn chưa có người bạn nào trong danh sách';
-      let emptySub = 'Hãy xem danh sách "Gợi ý kết bạn" bên dưới hoặc gõ tên / ID Name (@username) để kết bạn!';
+      let emptyTitle = "Bạn chưa có người bạn nào trong danh sách";
+      let emptySub =
+        'Hãy xem danh sách "Gợi ý kết bạn" bên dưới hoặc gõ tên / ID Name (@username) để kết bạn!';
 
       if (isSearchActive) {
         emptyTitle = `Không tìm thấy người dùng nào khớp với "${escape(query)}"`;
-        emptySub = 'Hãy thử nhập chính xác Họ tên hoặc ID Name (ví dụ: user10293 hoặc @user10293).';
-      } else if (currentTab === 'requests') {
-        emptyTitle = 'Bạn không có lời mời kết bạn nào đang chờ';
-        emptySub = 'Các lời mời kết bạn mới gửi tới bạn sẽ xuất hiện tại đây.';
+        emptySub =
+          "Hãy thử nhập chính xác Họ tên hoặc ID Name (ví dụ: user10293 hoặc @user10293).";
+      } else if (currentTab === "requests") {
+        emptyTitle = "Bạn không có lời mời kết bạn nào đang chờ";
+        emptySub = "Các lời mời kết bạn mới gửi tới bạn sẽ xuất hiện tại đây.";
       }
 
       contactsGrid.innerHTML = `
         <div class="col-span-full py-12 text-center text-slate-400 font-medium bg-white rounded-3xl border border-slate-200/80 p-8 shadow-sm">
           <span class="material-symbols-outlined text-5xl mb-2 text-slate-300 block font-light">
-            ${currentTab === 'requests' ? 'mark_email_read' : 'group_off'}
+            ${currentTab === "requests" ? "mark_email_read" : "group_off"}
           </span>
           <p class="text-sm font-bold text-slate-800 mb-1">${emptyTitle}</p>
           <p class="text-xs text-slate-500 max-w-md mx-auto">${emptySub}</p>
@@ -180,11 +227,12 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    contactsGrid.innerHTML = contacts.map(c => {
-      let actionButtons = '';
+    contactsGrid.innerHTML = contacts
+      .map((c) => {
+        let actionButtons = "";
 
-      if (c.friendStatus === 'accepted') {
-        actionButtons = `
+        if (c.friendStatus === "accepted") {
+          actionButtons = `
           <div class="flex items-center gap-1.5 shrink-0">
             <a href="index.html?chat_with=${encodeURIComponent(c.id)}" class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-primary hover:text-white dark:hover:bg-primary transition-all" title="Nhắn tin với ${escape(c.display_name)}">
               <span class="material-symbols-outlined text-[18px]">chat</span>
@@ -205,8 +253,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </div>
         `;
-      } else if (c.friendStatus === 'pending_sent') {
-        actionButtons = `
+        } else if (c.friendStatus === "pending_sent") {
+          actionButtons = `
           <div class="flex items-center gap-1.5 shrink-0">
             <span class="px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 font-bold text-[11px] flex items-center gap-1">
               <span>⏳ Đã gửi lời mời</span>
@@ -216,8 +264,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </button>
           </div>
         `;
-      } else if (c.friendStatus === 'pending_received') {
-        actionButtons = `
+        } else if (c.friendStatus === "pending_received") {
+          actionButtons = `
           <div class="flex items-center gap-1.5 shrink-0">
             <button data-action="accept" data-id="${escape(c.id)}" class="px-3.5 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm active:scale-95 transition-all flex items-center gap-1 cursor-pointer">
               <span class="material-symbols-outlined text-[15px]">check</span>
@@ -228,31 +276,46 @@ document.addEventListener('DOMContentLoaded', () => {
             </button>
           </div>
         `;
-      } else {
-        actionButtons = `
+        } else {
+          actionButtons = `
           <button data-action="add" data-id="${escape(c.id)}" class="px-4 py-2 rounded-full bg-primary hover:bg-primary-container text-white font-bold text-xs shadow-md shadow-primary/20 active:scale-95 transition-all flex items-center gap-1 cursor-pointer">
             <span class="material-symbols-outlined text-[16px]">person_add</span>
             <span>Kết bạn</span>
           </button>
         `;
-      }
+        }
 
-      return `
+        const cAvt = c.avatar_url || c.avatar;
+        const isImgAvt =
+          cAvt &&
+          (cAvt.startsWith("http") ||
+            cAvt.startsWith("data:image") ||
+            cAvt.includes("/"));
+
+        return `
         <div class="bg-white dark:bg-[#151e32] p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-4 group hover:shadow-xl hover:border-primary/30 transition-all duration-300">
           <div class="flex items-center gap-3.5 min-w-0 flex-1">
-            <div class="w-12 h-12 rounded-full bg-primary/10 text-primary font-bold text-base flex items-center justify-center shadow-inner shrink-0 group-hover:scale-105 transition-transform border border-primary/20">
-              ${escape(c.avatar || 'US')}
+            <div class="relative shrink-0">
+              <div class="w-12 h-12 rounded-full bg-primary/10 text-primary font-bold text-base flex items-center justify-center shadow-inner shrink-0 group-hover:scale-105 transition-transform border border-primary/20 overflow-hidden">
+                ${
+                  isImgAvt
+                    ? `<img src="${escape(cAvt)}" class="w-full h-full object-cover rounded-full" alt="${escape(c.display_name)}" />`
+                    : escape(c.avatar || "US")
+                }
+              </div>
+              <span class="absolute bottom-0 right-0 w-3.5 h-3.5 ${c.online ? 'bg-emerald-500' : 'bg-slate-400'} border-2 border-white rounded-full shadow-sm"></span>
             </div>
             <div class="min-w-0 flex-1">
               <h3 class="text-sm font-bold text-slate-900 dark:text-white truncate">${escape(c.display_name)}</h3>
               <p class="text-xs font-mono font-bold text-primary truncate">${escape(c.username)}</p>
-              <p class="text-[11px] text-slate-500 dark:text-slate-400 font-semibold truncate mt-0.5">${c.role === 'deaf' ? 'Người Khiếm Thính (VSL)' : 'Người Nghe Nói'}</p>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 font-semibold truncate mt-0.5">${c.role === "deaf" ? "Người Khiếm Thính (VSL)" : "Người Nghe Nói"}</p>
             </div>
           </div>
           ${actionButtons}
         </div>
       `;
-    }).join('');
+      })
+      .join("");
 
     bindActionButtons(contactsGrid);
   }
@@ -268,61 +331,85 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    suggestedGrid.innerHTML = suggestions.map(s => `
+    suggestedGrid.innerHTML = suggestions
+      .map((s) => {
+        const sAvt = s.avatar_url || s.avatar;
+        const isSImgAvt =
+          sAvt &&
+          (sAvt.startsWith("http") ||
+            sAvt.startsWith("data:image") ||
+            sAvt.includes("/"));
+        return `
       <div class="bg-white dark:bg-[#151e32] p-4.5 rounded-3xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3 hover:shadow-lg hover:border-primary/30 transition-all">
         <div class="flex items-center gap-3 min-w-0 flex-1">
-          <div class="w-11 h-11 rounded-full bg-secondary/10 text-secondary font-bold text-sm flex items-center justify-center shrink-0 border border-secondary/20">
-            ${escape(s.avatar || 'US')}
+          <div class="relative shrink-0">
+            <div class="w-11 h-11 rounded-full bg-secondary/10 text-secondary font-bold text-sm flex items-center justify-center shrink-0 border border-secondary/20 overflow-hidden">
+              ${
+                isSImgAvt
+                  ? `<img src="${escape(sAvt)}" class="w-full h-full object-cover rounded-full" alt="${escape(s.display_name)}" />`
+                  : escape(s.avatar || "US")
+              }
+            </div>
+            <span class="absolute bottom-0 right-0 w-3 h-3 ${s.online ? 'bg-emerald-500' : 'bg-slate-400'} border-2 border-white rounded-full shadow-sm"></span>
           </div>
           <div class="min-w-0 flex-1">
             <h4 class="text-xs font-bold text-slate-900 dark:text-white truncate">${escape(s.display_name)}</h4>
             <p class="text-[11px] font-mono font-bold text-primary truncate">${escape(s.username)}</p>
           </div>
         </div>
-        ${s.friendStatus === 'pending_sent' ? `
+        ${
+          s.friendStatus === "pending_sent"
+            ? `
           <div class="flex items-center gap-1.5">
             <span class="px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-bold text-[11px]">⏳ Đã gửi</span>
             <button data-action="unfriend" data-id="${escape(s.id)}" class="px-2 py-1 rounded-full bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 font-bold text-[11px] cursor-pointer">✕ Hủy</button>
           </div>
-        ` : s.friendStatus === 'pending_received' ? `
+        `
+            : s.friendStatus === "pending_received"
+              ? `
           <button data-action="accept" data-id="${escape(s.id)}" class="px-3 py-1.5 rounded-full bg-emerald-600 text-white font-bold text-xs shadow-sm cursor-pointer">Chấp nhận</button>
-        ` : `
+        `
+              : `
           <button data-action="add" data-id="${escape(s.id)}" class="px-3.5 py-1.5 rounded-full bg-primary hover:bg-primary-container text-white font-bold text-xs shadow-md shadow-primary/20 active:scale-95 transition-all flex items-center gap-1 cursor-pointer">
             <span class="material-symbols-outlined text-[15px]">person_add</span>
             <span>Kết bạn</span>
           </button>
-        `}
+        `
+        }
       </div>
-    `).join('');
+      `;
+      })
+      .join("");
 
     bindActionButtons(suggestedGrid);
   }
 
   function bindActionButtons(container) {
-    container.querySelectorAll('button[data-action]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
+    container.querySelectorAll("button[data-action]").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        const action = e.currentTarget.getAttribute('data-action');
-        const targetId = e.currentTarget.getAttribute('data-id');
+        const action = e.currentTarget.getAttribute("data-action");
+        const targetId = e.currentTarget.getAttribute("data-id");
 
-        if (action === 'toggle-more-menu') {
+        if (action === "toggle-more-menu") {
           const menu = document.getElementById(`friendMenu_${targetId}`);
           if (menu) {
-            document.querySelectorAll('[id^="friendMenu_"]').forEach(m => {
-              if (m !== menu) m.classList.add('hidden');
+            document.querySelectorAll('[id^="friendMenu_"]').forEach((m) => {
+              if (m !== menu) m.classList.add("hidden");
             });
-            menu.classList.toggle('hidden');
+            menu.classList.toggle("hidden");
           }
           return;
         }
 
-        if (action === 'add') {
+        if (action === "add") {
           const res = await window.supabaseService.sendFriendRequest(targetId);
           showToast(res.message || "📩 Đã gửi lời mời kết bạn thành công!");
-        } else if (action === 'accept') {
-          const res = await window.supabaseService.acceptFriendRequest(targetId);
+        } else if (action === "accept") {
+          const res =
+            await window.supabaseService.acceptFriendRequest(targetId);
           showToast(res.message || "🎉 Đã chấp nhận lời mời kết bạn!");
-        } else if (action === 'unfriend') {
+        } else if (action === "unfriend") {
           const res = await window.supabaseService.removeFriendship(targetId);
           showToast(res.message || "Đã hủy lời mời / kết bạn.");
         }
@@ -331,53 +418,67 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('[id^="friendMenu_"]') && !e.target.closest('button[data-action="toggle-more-menu"]')) {
-      document.querySelectorAll('[id^="friendMenu_"]').forEach(m => m.classList.add('hidden'));
+  document.addEventListener("click", (e) => {
+    if (
+      !e.target.closest('[id^="friendMenu_"]') &&
+      !e.target.closest('button[data-action="toggle-more-menu"]')
+    ) {
+      document
+        .querySelectorAll('[id^="friendMenu_"]')
+        .forEach((m) => m.classList.add("hidden"));
     }
   });
 
   if (notifBellBtn && notifDropdown) {
-    notifBellBtn.addEventListener('click', (e) => {
+    notifBellBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      notifDropdown.classList.toggle('hidden');
+      notifDropdown.classList.toggle("hidden");
     });
 
-    document.addEventListener('click', (e) => {
-      if (!notifDropdown.contains(e.target) && !notifBellBtn.contains(e.target)) {
-        notifDropdown.classList.add('hidden');
+    document.addEventListener("click", (e) => {
+      if (
+        !notifDropdown.contains(e.target) &&
+        !notifBellBtn.contains(e.target)
+      ) {
+        notifDropdown.classList.add("hidden");
       }
     });
   }
 
   function updateTabStyle(activeTab) {
     currentTab = activeTab;
-    const activeClass = "text-primary font-bold border-b-2 border-primary pb-1 text-xs cursor-pointer flex items-center gap-1";
-    const inactiveClass = "text-slate-500 hover:text-primary transition-colors text-xs font-semibold cursor-pointer flex items-center gap-1";
+    const activeClass =
+      "text-primary font-bold border-b-2 border-primary pb-1 text-xs cursor-pointer flex items-center gap-1";
+    const inactiveClass =
+      "text-slate-500 hover:text-primary transition-colors text-xs font-semibold cursor-pointer flex items-center gap-1";
 
-    if (tabFriendsBtn) tabFriendsBtn.className = activeTab === 'friends' ? activeClass : inactiveClass;
-    if (tabRequestsBtn) tabRequestsBtn.className = activeTab === 'requests' ? activeClass : inactiveClass;
+    if (tabFriendsBtn)
+      tabFriendsBtn.className =
+        activeTab === "friends" ? activeClass : inactiveClass;
+    if (tabRequestsBtn)
+      tabRequestsBtn.className =
+        activeTab === "requests" ? activeClass : inactiveClass;
   }
 
   if (tabFriendsBtn) {
-    tabFriendsBtn.addEventListener('click', (e) => {
+    tabFriendsBtn.addEventListener("click", (e) => {
       e.preventDefault();
-      updateTabStyle('friends');
+      updateTabStyle("friends");
       loadContacts();
     });
   }
 
   if (tabRequestsBtn) {
-    tabRequestsBtn.addEventListener('click', (e) => {
+    tabRequestsBtn.addEventListener("click", (e) => {
       e.preventDefault();
-      updateTabStyle('requests');
+      updateTabStyle("requests");
       loadContacts();
     });
   }
 
   if (searchInput) {
     let debounceTimer;
-    searchInput.addEventListener('input', () => {
+    searchInput.addEventListener("input", () => {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         loadContacts();
@@ -389,6 +490,10 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(() => {
     loadContacts();
   }, 3000);
+
+  window.loadContactsGlobal = () => {
+    loadContacts();
+  };
 
   loadContacts();
 });

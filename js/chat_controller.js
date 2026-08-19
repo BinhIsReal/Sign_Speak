@@ -40,7 +40,57 @@ document.addEventListener("DOMContentLoaded", async () => {
   const urlParams = new URLSearchParams(window.location.search);
   const chatWithTarget = urlParams.get("chat_with");
 
-  function setPartnerDetails(partner) {
+  function updateActiveCardUI(partnerId) {
+    if (!conversationsList || !partnerId) return;
+    conversationsList.querySelectorAll("[data-partner-id]").forEach((card) => {
+      const cardPartnerId = card.getAttribute("data-partner-id");
+      const avatarEl = card.querySelector(".w-11.h-11");
+      const nameEl = card.querySelector(".text-xs.font-bold");
+      const lastTextEl = card.querySelector("p");
+
+      if (cardPartnerId === partnerId) {
+        card.className = "flex items-center justify-between p-3.5 rounded-2xl cursor-pointer transition-all bg-primary/10 border-l-4 border-primary shadow-sm font-bold";
+        if (avatarEl) {
+          avatarEl.className = "w-11 h-11 rounded-full bg-primary text-white font-bold text-sm flex items-center justify-center shadow-sm";
+        }
+        if (nameEl) {
+          nameEl.className = "text-xs font-bold text-primary truncate";
+        }
+        if (lastTextEl) {
+          lastTextEl.className = "text-[11px] text-primary font-semibold truncate";
+        }
+        const badgeEl = card.querySelector(".nav-badge");
+        if (badgeEl) badgeEl.remove();
+      } else {
+        const canonicalRoomId = window.supabaseService.getCanonicalRoomId(currentUserId, cardPartnerId);
+        const unreadCount = window.supabaseService.getUnreadMessagesCountForUser(canonicalRoomId, currentUserId, cardPartnerId);
+        const isUnread = unreadCount > 0;
+
+        card.className = `flex items-center justify-between p-3.5 rounded-2xl cursor-pointer transition-all ${
+          isUnread ? "bg-rose-50/50 border-l-4 border-rose-500 shadow-sm" : "hover:bg-slate-100/70 border-l-4 border-transparent"
+        }`;
+
+        if (avatarEl) {
+          avatarEl.className = `w-11 h-11 rounded-full ${isUnread ? "bg-rose-500 text-white" : "bg-slate-200 text-slate-700"} font-bold text-sm flex items-center justify-center shadow-sm`;
+        }
+        if (nameEl) {
+          nameEl.className = `text-xs font-bold ${isUnread ? "text-rose-600 font-extrabold" : "text-slate-900"} truncate`;
+        }
+        if (lastTextEl) {
+          lastTextEl.className = `text-[11px] ${isUnread ? "text-rose-600 font-bold" : "text-slate-500"} truncate`;
+        }
+      }
+    });
+  }
+
+  const mobileBackBtn = document.getElementById("mobileBackToConversationsBtn");
+  if (mobileBackBtn) {
+    mobileBackBtn.addEventListener("click", () => {
+      document.body.classList.remove("mobile-chat-open");
+    });
+  }
+
+  function setPartnerDetails(partner, shouldMarkRead = false, openMobileChat = false) {
     if (!partner) return;
     activePartner = partner;
     activeRoomId = window.supabaseService.getCanonicalRoomId(
@@ -48,24 +98,42 @@ document.addEventListener("DOMContentLoaded", async () => {
       partner.id,
     );
 
-    window.supabaseService.markMessagesAsRead(activeRoomId, currentUserId);
+    // Switch to active chat window on mobile screen ONLY when user initiates it
+    if (openMobileChat) {
+      document.body.classList.add("mobile-chat-open");
+    }
 
-    if (activeChatAvatar)
-      activeChatAvatar.innerText = escape(partner.avatar || "US");
+    if (shouldMarkRead) {
+      window.supabaseService.markMessagesAsRead(activeRoomId, currentUserId, partner.id);
+    }
+
+    if (activeChatAvatar) {
+      const pAvt = partner.avatar_url || partner.avatar;
+      if (pAvt && (pAvt.startsWith('http') || pAvt.startsWith('data:image') || pAvt.includes('/'))) {
+        activeChatAvatar.innerHTML = `<img src="${escape(pAvt)}" class="w-full h-full object-cover rounded-full" alt="${escape(partner.display_name)}" />`;
+        activeChatAvatar.classList.add('overflow-hidden');
+      } else {
+        activeChatAvatar.innerText = escape(partner.avatar || "US");
+      }
+    }
     if (activeChatName)
       activeChatName.innerText = escape(
         partner.display_name || "Người dùng VSL",
       );
+    const isPartnerOnline = window.supabaseService.isUserOnline(partner.id);
     if (activeChatSub) {
       activeChatSub.innerHTML = `
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span>${escape(partner.username || "@user")} • ${partner.role === "deaf" ? "Người Khiếm Thính (VSL)" : "🗣️ Người Nghe Nói"}</span>
+        <span class="w-1.5 h-1.5 rounded-full ${isPartnerOnline ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}"></span>
+        <span>${escape(partner.username || "@user")} • ${isPartnerOnline ? '<span class="text-emerald-600 font-semibold">Đang hoạt động</span>' : '<span class="text-slate-400">Ngoại tuyến</span>'}</span>
       `;
     }
 
     if (activeVideoCallLink) {
-      activeVideoCallLink.href = `call.html?room=${encodeURIComponent(activeRoomId)}&partner=${encodeURIComponent(partner.display_name)}`;
+      activeVideoCallLink.href = `call.html?room=${encodeURIComponent(activeRoomId)}&partner=${encodeURIComponent(partner.display_name)}&role=caller`;
     }
+
+    // Synchronous 0ms active card UI update
+    updateActiveCardUI(partner.id);
 
     loadChatMessages();
     window.supabaseService.subscribeChatRoom(activeRoomId, (newMsg) => {
@@ -79,16 +147,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  // Subscribe to user's personal message channel for background notifications
+  // Subscribe to user's personal message channel for global real-time notifications
   if (currentUserId && currentUserId !== "usr_anon") {
-    window.supabaseService.subscribeUserMessageNotifications(currentUserId, (incomingMsg) => {
+    window.supabaseService.subscribeGlobalUserMessages(currentUserId, (incomingMsg) => {
       if (incomingMsg.sender_id !== currentUserId) {
-        if (activePartner && incomingMsg.sender_id === activePartner.id) {
-          window.supabaseService.markMessagesAsRead(activeRoomId, currentUserId);
+        if (activePartner && (incomingMsg.sender_id === activePartner.id || incomingMsg.sender_id === activePartner.username)) {
+          window.supabaseService.markMessagesAsRead(activeRoomId, currentUserId, activePartner.id);
           appendMessageToUI(incomingMsg);
+        } else {
+          window.supabaseService.showGlobalMessageToast(incomingMsg);
         }
       }
       loadConversationsList(conversationsSearchInput ? conversationsSearchInput.value : "");
+      window.supabaseService.updateSidebarBadges();
     });
   }
 
@@ -127,6 +198,50 @@ document.addEventListener("DOMContentLoaded", async () => {
     const safeText = escape(msg.text);
     const safeTime = escape(msg.timestamp || "Mới");
 
+    // Call Log Message Bubble Rendering
+    if (msg.msg_type === 'call_log' || msg.call_status || (msg.text && msg.text.includes('📞'))) {
+      const status = msg.call_status || (msg.text.includes('nhỡ') ? 'missed' : msg.text.includes('từ chối') ? 'declined' : 'completed');
+      let icon = 'videocam';
+      let iconBg = 'bg-primary/10 text-primary';
+      let statusLabel = 'Cuộc gọi video';
+
+      if (status === 'missed') {
+        icon = 'phone_missed';
+        iconBg = 'bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400';
+        statusLabel = 'Cuộc gọi nhỡ';
+      } else if (status === 'declined') {
+        icon = 'phone_disabled';
+        iconBg = 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400';
+        statusLabel = 'Cuộc gọi bị từ chối';
+      } else {
+        icon = isMe ? 'call_made' : 'call_received';
+        iconBg = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400';
+        statusLabel = `Cuộc gọi video${msg.duration ? ' • ' + escape(msg.duration) : ''}`;
+      }
+
+      const callBackUrl = activePartner 
+        ? `call.html?room=${encodeURIComponent(activeRoomId)}&partner=${encodeURIComponent(activePartner.display_name)}&role=caller`
+        : `call.html?room=${encodeURIComponent(activeRoomId)}&role=caller`;
+
+      return `
+        <div data-msg-id="${safeId}" class="flex flex-col items-center my-3 w-full">
+          <div class="flex items-center gap-3 p-3 px-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm max-w-[85%]">
+            <div class="w-9 h-9 rounded-full ${iconBg} flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[20px]">${icon}</span>
+            </div>
+            <div class="flex flex-col min-w-0 pr-2">
+              <span class="text-xs font-bold text-slate-900 dark:text-white truncate">${statusLabel}</span>
+              <span class="text-[10px] text-slate-400 font-semibold">${safeTime}</span>
+            </div>
+            <a href="${callBackUrl}" class="ml-auto px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold hover:brightness-110 flex items-center gap-1 shadow-sm shrink-0 active:scale-95 transition-all" title="Gọi lại">
+              <span class="material-symbols-outlined text-[15px]">videocam</span>
+              <span>Gọi lại</span>
+            </a>
+          </div>
+        </div>
+      `;
+    }
+
     if (isMe) {
       return `
         <div data-msg-id="${safeId}" class="flex flex-col items-end gap-1 mb-3">
@@ -137,10 +252,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         </div>
       `;
     } else {
+      const pAvt = activePartner ? (activePartner.avatar_url || activePartner.avatar) : '';
+      const isImgAvt = pAvt && (pAvt.startsWith('http') || pAvt.startsWith('data:image') || pAvt.includes('/'));
       return `
         <div data-msg-id="${safeId}" class="flex items-start gap-2.5 mb-3">
-          <div class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
-            ${escape(activePartner ? activePartner.avatar : "US")}
+          <div class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5 overflow-hidden">
+            ${isImgAvt 
+              ? `<img src="${escape(pAvt)}" class="w-full h-full object-cover rounded-full" alt="Avatar" />`
+              : escape(activePartner ? activePartner.avatar : "US")}
           </div>
           <div class="flex flex-col gap-1 max-w-[70%]">
             <div class="bg-white text-slate-900 border border-slate-200/80 p-3.5 rounded-3xl rounded-tl-sm text-sm font-medium shadow-sm">
@@ -212,38 +331,79 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     // Seed sample unread messages for initial experience
-    window.supabaseService.seedDefaultUnreadMessages(currentUserId, friends);
+    if (typeof window.supabaseService.seedDefaultUnreadMessages === "function") {
+      window.supabaseService.seedDefaultUnreadMessages(currentUserId, friends);
+    }
 
-    // Auto select partner from URL or first friend
+    // Calculate last interaction timestamp and metadata for each friend
+    const friendsWithMeta = friends.map((f) => {
+      const canonicalRoomId = window.supabaseService.getCanonicalRoomId(
+        currentUserId,
+        f.id,
+      );
+      const unreadCount = typeof window.supabaseService.getUnreadMessagesCountForUser === "function"
+        ? window.supabaseService.getUnreadMessagesCountForUser(canonicalRoomId, currentUserId, f.id)
+        : (typeof window.supabaseService.getUnreadMessagesCountForRoom === "function"
+          ? window.supabaseService.getUnreadMessagesCountForRoom(canonicalRoomId, currentUserId)
+          : 0);
+      const history = window.supabaseService.getChatHistory(canonicalRoomId);
+      const lastMsg = history.length > 0 ? history[history.length - 1] : null;
+
+      let lastTimeMs = 0;
+      if (lastMsg) {
+        if (lastMsg.created_at) {
+          lastTimeMs = new Date(lastMsg.created_at).getTime();
+        } else if (lastMsg.id && lastMsg.id.includes('_')) {
+          const parts = lastMsg.id.split('_');
+          const lastNum = Number(parts[parts.length - 1]);
+          if (!isNaN(lastNum) && lastNum > 1000000000) lastTimeMs = lastNum;
+        } else if (lastMsg.timestamp) {
+          const [h, m] = lastMsg.timestamp.split(':');
+          if (h !== undefined && m !== undefined) {
+            const d = new Date();
+            d.setHours(parseInt(h, 10) || 0, parseInt(m, 10) || 0, 0, 0);
+            lastTimeMs = d.getTime();
+          }
+        }
+      }
+
+      const isOnline = window.supabaseService.isUserOnline(f);
+      f.online = isOnline;
+
+      return {
+        friend: f,
+        canonicalRoomId,
+        unreadCount,
+        history,
+        lastMsg,
+        lastTimeMs
+      };
+    });
+
+    // SORT BY LATEST INTERACTION TIMESTAMP DESCENDING
+    friendsWithMeta.sort((a, b) => b.lastTimeMs - a.lastTimeMs);
+
+    const sortedFriends = friendsWithMeta.map(item => item.friend);
+
+    // Auto select partner from URL or top sorted friend
     if (!activePartner) {
       if (chatWithTarget) {
-        const target = friends.find(
+        const target = sortedFriends.find(
           (u) => u.id === chatWithTarget || u.username === chatWithTarget,
         );
         if (target) {
-          setPartnerDetails(target);
+          setPartnerDetails(target, true, true); // User specified target in URL -> open mobile chat view
         } else {
-          setPartnerDetails(friends[0]);
+          setPartnerDetails(sortedFriends[0], true, false); // Default desktop select, stay on list view on mobile
         }
       } else {
-        setPartnerDetails(friends[0]);
+        setPartnerDetails(sortedFriends[0], true, false); // Default desktop select, stay on list view on mobile
       }
     }
 
-    conversationsList.innerHTML = friends
-      .map((f) => {
+    conversationsList.innerHTML = friendsWithMeta
+      .map(({ friend: f, unreadCount, lastMsg }) => {
         const isActive = activePartner && activePartner.id === f.id;
-        const canonicalRoomId = window.supabaseService.getCanonicalRoomId(
-          currentUserId,
-          f.id,
-        );
-        const unreadCount = window.supabaseService.getUnreadMessagesCountForRoom(
-          canonicalRoomId,
-          currentUserId,
-        );
-        const history = window.supabaseService.getChatHistory(canonicalRoomId);
-        const lastMsg = history.length > 0 ? history[history.length - 1] : null;
-
         const rawLastText = lastMsg
           ? lastMsg.text
           : f.role === "deaf"
@@ -258,29 +418,36 @@ document.addEventListener("DOMContentLoaded", async () => {
           lastMsg ? lastMsg.timestamp || "Mới" : "Trực tuyến",
         );
 
-        const unreadBadgeHTML = unreadCount > 0
+        const isUnread = unreadCount > 0;
+        const unreadBadgeHTML = isUnread
           ? `<span class="nav-badge ml-2 shrink-0">${unreadCount > 99 ? '99+' : unreadCount}</span>`
           : ``;
+
+        const isOnline = f.online;
 
         return `
         <div data-partner-id="${escape(f.id)}" class="flex items-center justify-between p-3.5 rounded-2xl cursor-pointer transition-all ${
           isActive
             ? "bg-primary/10 border-l-4 border-primary shadow-sm font-bold"
-            : "hover:bg-slate-100/70 border-l-4 border-transparent"
+            : isUnread
+              ? "bg-rose-50/50 border-l-4 border-rose-500 shadow-sm"
+              : "hover:bg-slate-100/70 border-l-4 border-transparent"
         }">
           <div class="flex items-center gap-3.5 min-w-0 flex-1">
             <div class="relative shrink-0">
-              <div class="w-11 h-11 rounded-full ${isActive ? "bg-primary text-white" : "bg-slate-200 text-slate-700"} font-bold text-sm flex items-center justify-center shadow-sm">
-                ${escape(f.avatar || "US")}
+              <div class="w-11 h-11 rounded-full ${isActive ? "bg-primary text-white" : isUnread ? "bg-rose-500 text-white" : "bg-slate-200 text-slate-700"} font-bold text-sm flex items-center justify-center shadow-sm overflow-hidden">
+                ${(f.avatar_url || f.avatar) && ((f.avatar_url || f.avatar).startsWith('http') || (f.avatar_url || f.avatar).startsWith('data:image') || (f.avatar_url || f.avatar).includes('/'))
+                  ? `<img src="${escape(f.avatar_url || f.avatar)}" class="w-full h-full object-cover rounded-full" alt="${escape(f.display_name)}" />`
+                  : escape(f.avatar || "US")}
               </div>
-              <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white"></span>
+              <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full ${isOnline ? "bg-emerald-500" : "bg-slate-400"} border-2 border-white"></span>
             </div>
             <div class="flex-grow min-w-0 pr-1">
               <div class="flex justify-between items-baseline mb-0.5">
-                <span class="text-xs font-bold ${isActive ? "text-primary" : "text-slate-900"} truncate">${escape(f.display_name)}</span>
-                <span class="text-[10px] text-slate-400 font-normal ml-1 shrink-0">${safeTime}</span>
+                <span class="text-xs font-bold ${isActive ? "text-primary" : isUnread ? "text-rose-600 font-extrabold" : "text-slate-900"} truncate">${escape(f.display_name)}</span>
+                <span class="text-[10px] ${isUnread ? "text-rose-500 font-bold" : "text-slate-400 font-normal"} ml-1 shrink-0">${safeTime}</span>
               </div>
-              <p class="text-[11px] ${isActive ? "text-primary font-semibold" : "text-slate-500"} truncate">${safeLastText}</p>
+              <p class="text-[11px] ${isActive ? "text-primary font-semibold" : isUnread ? "text-rose-600 font-bold" : "text-slate-500"} truncate">${safeLastText}</p>
             </div>
           </div>
           ${unreadBadgeHTML}
@@ -296,17 +463,24 @@ document.addEventListener("DOMContentLoaded", async () => {
         const partnerId = card.getAttribute("data-partner-id");
         const targetPartner = friends.find((f) => f.id === partnerId);
         if (targetPartner) {
-          setPartnerDetails(targetPartner);
-          loadConversationsList(
-            conversationsSearchInput ? conversationsSearchInput.value : "",
-          );
+          setPartnerDetails(targetPartner, true, true);
         }
       });
     });
   }
 
+  function markCurrentChatAsRead() {
+    if (activeRoomId && activePartner && currentUserId) {
+      window.supabaseService.markMessagesAsRead(activeRoomId, currentUserId, activePartner.id);
+      updateActiveCardUI(activePartner.id);
+    }
+  }
+
   // 2. Send Message Handler
   if (chatForm && chatMessageInput) {
+    chatMessageInput.addEventListener("focus", markCurrentChatAsRead);
+    chatMessageInput.addEventListener("click", markCurrentChatAsRead);
+
     chatForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const rawText = chatMessageInput.value;
@@ -326,7 +500,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         sender_name: currentUserName,
         text: cleanText,
         timestamp: timeStr,
-        read: true
+        read: false
       };
 
       chatMessageInput.value = "";
@@ -341,6 +515,20 @@ document.addEventListener("DOMContentLoaded", async () => {
       loadConversationsList(conversationsSearchInput.value);
     });
   }
+
+  // 3-second background sync for Messenger-like real-time responsiveness
+  setInterval(async () => {
+    if (activeRoomId && activePartner) {
+      const cloudHistory = await window.supabaseService.getChatHistoryAsync(activeRoomId);
+      if (cloudHistory && cloudHistory.length > 0) {
+        cloudHistory.forEach(m => appendMessageToUI(m));
+      }
+    }
+  }, 3000);
+
+  window.loadConversationsListGlobal = () => {
+    loadConversationsList(conversationsSearchInput ? conversationsSearchInput.value : "");
+  };
 
   await loadConversationsList();
 });
