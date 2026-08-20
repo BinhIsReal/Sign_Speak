@@ -13,8 +13,8 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const apiKey = process.env.METERED_API_KEY;
-  const appName = process.env.METERED_APP_NAME;
+  const apiKey = process.env.METERED_API_KEY || '00eeb792619481b2bccdab2ef10c9c257545';
+  const appName = process.env.METERED_APP_NAME || 'sigbspeak';
 
   // Comprehensive global STUN servers list
   const defaultStunServers = [
@@ -33,14 +33,33 @@ export default async function handler(req, res) {
     }
   ];
 
-  if (!apiKey || !appName) {
-    console.log('[ice-servers] METERED_API_KEY / METERED_APP_NAME not configured — returning global STUN servers.');
-    return res.status(200).json({
-      iceServers: defaultStunServers,
-      hasTurnRelay: false,
-      hint: 'To enable cross-network TURN relay (4G/5G/Firewall), add METERED_API_KEY and METERED_APP_NAME to Vercel Environment Variables.'
-    });
-  }
+  // Static fallback Metered TURN credentials in case REST API is unreachable
+  const staticTurnFallback = [
+    ...defaultStunServers,
+    {
+      urls: 'stun:stun.relay.metered.ca:80'
+    },
+    {
+      urls: 'turn:global.relay.metered.ca:80',
+      username: '19a41198dfa472d07e664267',
+      credential: '2Dl+anP4+2pT5LBN'
+    },
+    {
+      urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+      username: '19a41198dfa472d07e664267',
+      credential: '2Dl+anP4+2pT5LBN'
+    },
+    {
+      urls: 'turn:global.relay.metered.ca:443',
+      username: '19a41198dfa472d07e664267',
+      credential: '2Dl+anP4+2pT5LBN'
+    },
+    {
+      urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+      username: '19a41198dfa472d07e664267',
+      credential: '2Dl+anP4+2pT5LBN'
+    }
+  ];
 
   try {
     const meteredUrl = `https://${appName}.metered.live/api/v1/turn/credentials?apiKey=${apiKey}`;
@@ -66,11 +85,11 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('[ice-servers] Failed to fetch from Metered.ca:', error.message);
+    console.warn('[ice-servers] REST API fetch failed, returning static fallback TURN servers:', error.message);
     return res.status(200).json({
-      iceServers: defaultStunServers,
-      hasTurnRelay: false,
-      error: error.message
+      iceServers: staticTurnFallback,
+      hasTurnRelay: true,
+      fallback: true
     });
   }
 }

@@ -28,8 +28,29 @@ class WebRTCService {
             'stun:stun.cloudflare.com:3478',
             'stun:stun.services.mozilla.com:3478',
             'stun:stun.nextcloud.com:443',
-            'stun:global.stun.twilio.com:3478'
+            'stun:global.stun.twilio.com:3478',
+            'stun:stun.relay.metered.ca:80'
           ]
+        },
+        {
+          urls: 'turn:global.relay.metered.ca:80',
+          username: '19a41198dfa472d07e664267',
+          credential: '2Dl+anP4+2pT5LBN'
+        },
+        {
+          urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+          username: '19a41198dfa472d07e664267',
+          credential: '2Dl+anP4+2pT5LBN'
+        },
+        {
+          urls: 'turn:global.relay.metered.ca:443',
+          username: '19a41198dfa472d07e664267',
+          credential: '2Dl+anP4+2pT5LBN'
+        },
+        {
+          urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+          username: '19a41198dfa472d07e664267',
+          credential: '2Dl+anP4+2pT5LBN'
         }
       ],
       iceCandidatePoolSize: 10,
