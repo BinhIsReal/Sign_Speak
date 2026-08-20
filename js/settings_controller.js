@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let settings = {
     theme: localStorage.getItem('app_theme') || 'light',
     fontSize: localStorage.getItem('app_font_size') || '16',
-    showHud: localStorage.getItem('show_diagnostic_hud') !== 'false',
+    showHud: localStorage.getItem('show_diagnostic_hud') === 'true',
     subtitleMode: localStorage.getItem('subtitle_mode') || 'overlay',
     overlayOpacity: localStorage.getItem('overlay_opacity') || '80',
     fixedBarOpacity: localStorage.getItem('fixed_bar_opacity') || '90'
@@ -109,6 +109,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // --- 5. MODERN TOAST NOTIFICATION ---
+  function showSaveSuccessToast() {
+    const existing = document.getElementById('settingsSuccessToast');
+    if (existing) existing.remove();
+
+    const toastHtml = `
+      <div id="settingsSuccessToast" class="fixed top-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3.5 px-6 py-4 rounded-2xl bg-slate-900/95 dark:bg-[#111928]/95 border border-emerald-500/40 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-6 duration-300 max-w-md w-[92%] sm:w-auto">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+          <span class="material-symbols-outlined text-[24px]">verified</span>
+        </div>
+        <div class="pr-2 flex-1 min-w-0">
+          <h4 class="text-xs font-bold text-white tracking-wide flex items-center gap-1.5">
+            <span>Đã lưu cài đặt thành công!</span>
+          </h4>
+          <p class="text-[11px] text-slate-300 mt-0.5">Các thay đổi về giao diện, phụ đề và HUD đã được áp dụng.</p>
+        </div>
+        <button onclick="document.getElementById('settingsSuccessToast')?.remove()" class="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer shrink-0">
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', toastHtml);
+
+    setTimeout(() => {
+      const toast = document.getElementById('settingsSuccessToast');
+      if (toast) {
+        toast.classList.add('opacity-0', '-translate-y-4', 'transition-all', 'duration-300');
+        setTimeout(() => toast.remove(), 300);
+      }
+    }, 3000);
+  }
+
   // --- INIT UI FROM LOCAL STORAGE ---
   applyTheme(settings.theme);
   applyFontSize(settings.fontSize);
@@ -177,7 +209,16 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('overlay_opacity', settings.overlayOpacity);
       localStorage.setItem('fixed_bar_opacity', settings.fixedBarOpacity);
 
-      alert("✅ Đã lưu tất cả cài đặt hệ thống thành công!");
+      // Button feedback
+      const origText = saveSettingsBtn.innerHTML;
+      saveSettingsBtn.innerHTML = `<span>✓ Đã lưu cài đặt thành công!</span>`;
+      saveSettingsBtn.className = "w-full py-4 bg-emerald-600 text-white rounded-full font-bold text-sm shadow-xl shadow-emerald-600/30 transition-all cursor-pointer";
+      setTimeout(() => {
+        saveSettingsBtn.innerHTML = origText;
+        saveSettingsBtn.className = "w-full py-4 bg-gradient-to-r from-primary to-primary-container text-white rounded-full font-bold text-sm shadow-xl shadow-primary/25 hover:shadow-2xl hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer";
+      }, 2000);
+
+      showSaveSuccessToast();
     });
   }
 });

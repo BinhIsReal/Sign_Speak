@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Benchmark AI - Sign Speak</title>
+  <meta name="description" content="Demo trang nhận diện ngôn ngữ ký hiệu bằng AI MediaPipe + DTW. Không cần đăng nhập." />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: { extend: { fontFamily: { sans: ["Outfit", "sans-serif"] }, colors: { primary: "#0084FF", error: "#e53935" } } }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="js/cv/feature_extractor.js"></script>
+  <script src="js/cv/dtw_classifier.js"></script>
+  <style>
+    body { font-family: "Outfit", sans-serif; }
+    .stat-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 1rem; padding: 1.25rem; }
+    .conf-bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.1); }
+    .conf-fill { height: 6px; border-radius: 3px; transition: width 0.4s ease, background 0.4s ease; }
+    #resultWord { font-size: 2.5rem; font-weight: 700; text-align: center; transition: all 0.3s ease; }
+    .pulse-ring { animation: pulseRing 1.5s ease-in-out infinite; }
+    @keyframes pulseRing { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(1.04)} }
+    .history-row:nth-child(even) { background: rgba(255,255,255,0.03); }
+  </style>
+</head>
+<body class="bg-[#0a0f1e] text-white min-h-screen">
+
+  <!-- Header -->
+  <header class="border-b border-white/10 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <a href="index.html" class="text-slate-400 hover:text-white transition-colors">
+        <span class="material-symbols-outlined text-[22px]">arrow_back</span>
+      </a>
+      <div>
+        <h1 class="text-base font-bold text-white">Sign Speak — Benchmark AI</h1>
+        <p class="text-xs text-slate-400">MediaPipe Hands + DTW Classifier | Demo công khai</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <span id="statusDot" class="w-2 h-2 rounded-full bg-slate-600"></span>
+      <span id="statusLabel" class="text-xs text-slate-400">Chưa khởi động</span>
+    </div>
+  </header>
+
+  <!-- Main layout -->
+  <main class="max-w-7xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
+
+    <!-- Left: Camera -->
+    <section class="flex-1 flex flex-col gap-4">
+      <div class="relative w-full aspect-video bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+        <video id="benchmarkVideo" autoplay playsinline muted class="w-full h-full object-cover mirror-mode absolute inset-0 z-0" style="transform:scaleX(-1)"></video>
+        <canvas id="benchmarkCanvas" width="640" height="480" class="w-full h-full object-cover absolute inset-0 z-10 pointer-events-none" style="transform:scaleX(-1)"></canvas>
+
+        <!-- Live HUD -->
+        <div class="absolute top-3 left-3 z-20 bg-black/70 border border-green-500/30 rounded-xl px-3 py-2 text-[11px] font-mono text-green-400 space-y-0.5 backdrop-blur-md">
+          <div class="flex gap-2"><span>FPS:</span><span id="bHudFps" class="text-white font-bold">--</span><span>|</span><span>AI:</span><span id="bHudMs" class="text-sky-400 font-bold">--ms</span></div>
+          <div class="flex gap-2"><span>Tay:</span><span id="bHudHands" class="text-amber-300 font-bold">0</span><span>|</span><span>Conf:</span><span id="bHudConf" class="font-bold">--</span></div>
+          <div class="flex gap-2"><span>DTW:</span><span id="bHudDtw" class="text-violet-400 font-bold">--</span></div>
+        </div>
+
+        <!-- Center result overlay -->
+        <div id="resultOverlay" class="hidden absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+          <div class="bg-black/60 backdrop-blur-md rounded-2xl px-8 py-5 text-center border border-white/20">
+            <p id="resultWord" class="text-emerald-400 pulse-ring">--</p>
+            <p id="resultConf" class="text-slate-300 text-sm mt-1"></p>
+          </div>
+        </div>
+
+        <!-- No camera placeholder -->
+        <div id="noCameraPlaceholder" class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-900/90">
+          <span class="material-symbols-outlined text-5xl text-slate-500 mb-3">videocam_off</span>
+          <p class="text-slate-400 text-sm">Nhấn nút bên dưới để bắt đầu</p>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="flex gap-3">
+        <button id="startBenchmarkBtn" class="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-primary text-white font-bold hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-blue-500/20">
+          <span class="material-symbols-outlined text-[20px]">play_circle</span>
+          Bắt đầu Demo
+        </button>
+        <button id="resetStatsBtn" class="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 transition-all font-semibold text-sm">
+          <span class="material-symbols-outlined text-[18px] align-middle">refresh</span>
+          Reset
+        </button>
+      </div>
+    </section>
+
+    <!-- Right: Stats panel -->
+    <aside class="w-full lg:w-96 flex flex-col gap-4">
+
+      <!-- Current Recognition -->
+      <div class="stat-card">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Nhận diện gần nhất</h2>
+        <div class="text-center mb-4">
+          <p id="lastWord" class="text-3xl font-bold text-white mb-1">--</p>
+          <p id="lastWordEn" class="text-xs text-slate-500">Chưa nhận diện được từ nào</p>
+        </div>
+        <div class="conf-bar mb-1">
+          <div id="confFill" class="conf-fill w-0 bg-emerald-400"></div>
+        </div>
+        <div class="flex justify-between text-[11px] text-slate-500">
+          <span>Confidence</span>
+          <span id="confLabel">--%</span>
+        </div>
+      </div>
+
+      <!-- Session Stats -->
+      <div class="grid grid-cols-2 gap-3">
+        <div class="stat-card text-center">
+          <p class="text-2xl font-bold text-white" id="statTotal">0</p>
+          <p class="text-[11px] text-slate-400 mt-1">Lần thử</p>
+        </div>
+        <div class="stat-card text-center">
+          <p class="text-2xl font-bold text-emerald-400" id="statSuccess">0</p>
+          <p class="text-[11px] text-slate-400 mt-1">Nhận diện được</p>
+        </div>
+        <div class="stat-card text-center">
+          <p class="text-2xl font-bold text-amber-400" id="statRate">--%</p>
+          <p class="text-[11px] text-slate-400 mt-1">Tỉ lệ thành công</p>
+        </div>
+        <div class="stat-card text-center">
+          <p class="text-2xl font-bold text-sky-400" id="statAvgConf">--%</p>
+          <p class="text-[11px] text-slate-400 mt-1">Conf trung bình</p>
+        </div>
+      </div>
+
+      <!-- Vocabulary loaded -->
+      <div class="stat-card">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Từ vựng đã nạp</h2>
+          <span id="vocabCount" class="text-xs text-primary font-bold">0 từ</span>
+        </div>
+        <div id="vocabChips" class="flex flex-wrap gap-1.5"></div>
+      </div>
+
+      <!-- History -->
+      <div class="stat-card flex-1">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Lịch sử session</h2>
+        <div id="historyList" class="space-y-1 max-h-52 overflow-y-auto text-[11px] font-mono">
+          <p class="text-slate-600 text-center py-4">Chưa có dữ liệu</p>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <script>
+    // ─── State ───────────────────────────────────────────────
+    let hands = null;
+    let featureExtractor = null;
+    let dtwClassifier = null;
+    let isRunning = false;
+
+    let sessionTotal = 0;
+    let sessionSuccess = 0;
+    let sessionConfSum = 0;
+
+    let frameCount = 0;
+    let lastFpsTime = performance.now();
+    let currentFps = 0;
+    let isProcessingFrame = false;
+    let lastAiTime = 0;
+    const AI_THROTTLE = 35;
+
+    const video = document.getElementById('benchmarkVideo');
+    const canvas = document.getElementById('benchmarkCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // ─── DOM refs ────────────────────────────────────────────
+    const statusDot = document.getElementById('statusDot');
+    const statusLabel = document.getElementById('statusLabel');
+    const startBtn = document.getElementById('startBenchmarkBtn');
+    const resetBtn = document.getElementById('resetStatsBtn');
+    const noCamPlaceholder = document.getElementById('noCameraPlaceholder');
+    const resultOverlay = document.getElementById('resultOverlay');
+
+    // ─── Init AI pipeline ────────────────────────────────────
+    async function initAI() {
+      featureExtractor = new FeatureExtractor();
+      dtwClassifier = new DTWClassifier({ maxDistanceThreshold: 0.18, targetResampleFrames: 20 });
+
+      // Load master dataset
+      try {
+        const res = await fetch(`assets/data/vsl_dataset.json?v=${Date.now()}`, { cache: 'no-cache' });
+        const data = await res.json();
+        const templates = [];
+        const vocabSet = new Set();
+
+        Object.keys(data).forEach(wordId => {
+          const samples = data[wordId];
+          if (samples && samples.length > 0) {
+            vocabSet.add(samples[0].word || wordId);
+            samples.forEach(s => {
+              if (Array.isArray(s.sequence) && s.sequence.length > 0) {
+                templates.push({ id: s.id || wordId, word: s.word || wordId, sequence: s.sequence });
+              }
+            });
+          }
+        });
+
+        dtwClassifier.loadTemplates(templates);
+
+        // Render vocab chips
+        const chipsEl = document.getElementById('vocabChips');
+        const countEl = document.getElementById('vocabCount');
+        countEl.innerText = vocabSet.size + ' tu';
+        chipsEl.innerHTML = '';
+        [...vocabSet].sort().forEach(word => {
+          const chip = document.createElement('span');
+          chip.className = 'px-2 py-0.5 rounded-full text-[11px] font-semibold bg-primary/20 text-primary border border-primary/30';
+          chip.innerText = word;
+          chipsEl.appendChild(chip);
+        });
+
+        console.log('[Benchmark] Loaded', templates.length, 'templates,', vocabSet.size, 'words');
+      } catch (e) {
+        console.warn('[Benchmark] Could not load dataset:', e);
+      }
+
+      // Init MediaPipe Hands
+      hands = new Hands({ locateFile: f => 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/' + f });
+      hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+      hands.onResults(onHandsResults);
+    }
+
+    // ─── Camera start ────────────────────────────────────────
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+        video.srcObject = stream;
+        await video.play();
+        noCamPlaceholder.classList.add('hidden');
+
+        setStatus('running', 'AI dang chay...');
+        isRunning = true;
+        startBtn.innerHTML = '<span class="material-symbols-outlined text-[20px]">stop_circle</span> Dung lai';
+        requestAnimationFrame(renderLoop);
+      } catch (err) {
+        setStatus('error', 'Loi camera: ' + err.message);
+      }
+    }
+
+    function stopCamera() {
+      isRunning = false;
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach(t => t.stop());
+        video.srcObject = null;
+      }
+      noCamPlaceholder.classList.remove('hidden');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      setStatus('idle', 'Da dung');
+      startBtn.innerHTML = '<span class="material-symbols-outlined text-[20px]">play_circle</span> Bat dau Demo';
+    }
+
+    // ─── Render loop ─────────────────────────────────────────
+    async function renderLoop() {
+      if (!isRunning) return;
+
+      // FPS
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsTime >= 1000) {
+        currentFps = frameCount;
+        frameCount = 0;
+        lastFpsTime = now;
+        document.getElementById('bHudFps').innerText = currentFps;
+      }
+
+      // AI throttle
+      if (!isProcessingFrame && now - lastAiTime >= AI_THROTTLE) {
+        lastAiTime = now;
+        isProcessingFrame = true;
+        const aiStart = performance.now();
+        try {
+          await hands.send({ image: video });
+        } catch (_) {}
+        document.getElementById('bHudMs').innerText = Math.round(performance.now() - aiStart) + 'ms';
+        isProcessingFrame = false;
+      }
+
+      requestAnimationFrame(renderLoop);
+    }
+
+    // ─── MediaPipe results ───────────────────────────────────
+    function onHandsResults(rawResults) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const results = { leftHandLandmarks: null, rightHandLandmarks: null };
+      let handCount = 0;
+
+      if (rawResults.multiHandLandmarks && rawResults.multiHandedness) {
+        for (let i = 0; i < rawResults.multiHandLandmarks.length; i++) {
+          const label = rawResults.multiHandedness[i].label;
+          const landmarks = rawResults.multiHandLandmarks[i];
+          if (label === 'Left') results.leftHandLandmarks = landmarks;
+          else results.rightHandLandmarks = landmarks;
+          handCount++;
+        }
+      }
+
+      document.getElementById('bHudHands').innerText = handCount;
+
+      // Draw skeleton
+      ctx.save();
+      if (results.leftHandLandmarks) {
+        drawConnectors(ctx, results.leftHandLandmarks, HAND_CONNECTIONS, { color: '#0084FF', lineWidth: 2 });
+        drawLandmarks(ctx, results.leftHandLandmarks, { color: '#60a5fa', radius: 3 });
+      }
+      if (results.rightHandLandmarks) {
+        drawConnectors(ctx, results.rightHandLandmarks, HAND_CONNECTIONS, { color: '#8300de', lineWidth: 2 });
+        drawLandmarks(ctx, results.rightHandLandmarks, { color: '#c084fc', radius: 3 });
+      }
+      ctx.restore();
+
+      // Feature extraction + DTW
+      const frameData = featureExtractor.processFrame(results);
+
+      if (frameData.sequenceComplete && frameData.sequenceComplete.length >= 4) {
+        const prediction = dtwClassifier.predict(frameData.sequenceComplete);
+        sessionTotal++;
+
+        // Update HUD
+        const confColor = prediction.confidence >= 80 ? '#34d399' : prediction.confidence >= 60 ? '#fbbf24' : '#f87171';
+        const confEl = document.getElementById('bHudConf');
+        if (confEl) { confEl.innerText = prediction.confidence + '%'; confEl.style.color = confColor; }
+        const dtwEl = document.getElementById('bHudDtw');
+        if (dtwEl) dtwEl.innerText = prediction.distance === Infinity ? 'inf' : prediction.distance.toFixed(3);
+
+        if (!prediction.isRejected && prediction.word && prediction.confidence >= 80) {
+          sessionSuccess++;
+          sessionConfSum += prediction.confidence;
+
+          // Show result overlay
+          document.getElementById('resultWord').innerText = prediction.word;
+          document.getElementById('resultWord').style.color = '#34d399';
+          document.getElementById('resultConf').innerText = 'Confidence: ' + prediction.confidence + '% | DTW: ' + prediction.distance.toFixed(3);
+          resultOverlay.classList.remove('hidden');
+          setTimeout(() => resultOverlay.classList.add('hidden'), 2500);
+
+          // Update card
+          document.getElementById('lastWord').innerText = prediction.word;
+          document.getElementById('lastWordEn').innerText = 'DTW distance: ' + prediction.distance.toFixed(4) + ' | Threshold: ' + prediction.thresholdUsed;
+          const confPct = Math.min(100, prediction.confidence);
+          document.getElementById('confFill').style.width = confPct + '%';
+          document.getElementById('confFill').style.background = confColor;
+          document.getElementById('confLabel').innerText = confPct + '%';
+
+          // History
+          addHistory(prediction.word, prediction.confidence, prediction.distance);
+        }
+
+        // Update session stats
+        document.getElementById('statTotal').innerText = sessionTotal;
+        document.getElementById('statSuccess').innerText = sessionSuccess;
+        const rate = sessionTotal > 0 ? Math.round((sessionSuccess / sessionTotal) * 100) : 0;
+        document.getElementById('statRate').innerText = rate + '%';
+        document.getElementById('statRate').style.color = rate >= 70 ? '#34d399' : rate >= 40 ? '#fbbf24' : '#f87171';
+        const avgConf = sessionSuccess > 0 ? Math.round(sessionConfSum / sessionSuccess) : 0;
+        document.getElementById('statAvgConf').innerText = avgConf > 0 ? avgConf + '%' : '--%';
+      }
+    }
+
+    // ─── History table ────────────────────────────────────────
+    function addHistory(word, conf, dist) {
+      const list = document.getElementById('historyList');
+      const existing = list.querySelector('.empty-msg');
+      if (existing) existing.remove();
+
+      const now = new Date();
+      const time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
+      const confColor = conf >= 80 ? 'text-emerald-400' : conf >= 60 ? 'text-amber-400' : 'text-red-400';
+
+      const row = document.createElement('div');
+      row.className = 'history-row flex items-center justify-between px-2 py-1.5 rounded-lg gap-2';
+      row.innerHTML = `
+        <span class="text-slate-300 font-bold w-24 truncate">${word}</span>
+        <span class="${confColor} w-12 text-right">${conf}%</span>
+        <span class="text-violet-400 w-14 text-right">${dist.toFixed(3)}</span>
+        <span class="text-slate-600 w-16 text-right">${time}</span>
+      `;
+      list.prepend(row);
+
+      // Keep max 30 rows
+      const rows = list.querySelectorAll('.history-row');
+      if (rows.length > 30) rows[rows.length - 1].remove();
+    }
+
+    // ─── Status helper ────────────────────────────────────────
+    function setStatus(state, label) {
+      const colors = { running: 'bg-emerald-500', error: 'bg-red-500', idle: 'bg-slate-600' };
+      statusDot.className = 'w-2 h-2 rounded-full ' + (colors[state] || 'bg-slate-600');
+      statusLabel.innerText = label;
+    }
+
+    // ─── Events ───────────────────────────────────────────────
+    startBtn.addEventListener('click', () => {
+      if (isRunning) stopCamera();
+      else startCamera();
+    });
+
+    resetBtn.addEventListener('click', () => {
+      sessionTotal = 0; sessionSuccess = 0; sessionConfSum = 0;
+      document.getElementById('statTotal').innerText = '0';
+      document.getElementById('statSuccess').innerText = '0';
+      document.getElementById('statRate').innerText = '--%';
+      document.getElementById('statAvgConf').innerText = '--%';
+      document.getElementById('lastWord').innerText = '--';
+      document.getElementById('lastWordEn').innerText = 'Chua nhan dien duoc tu nao';
+      document.getElementById('confFill').style.width = '0';
+      document.getElementById('confLabel').innerText = '--%';
+      document.getElementById('historyList').innerHTML = '<p class="text-slate-600 text-center py-4 empty-msg">Chua co du lieu</p>';
+      featureExtractor = new FeatureExtractor();
+    });
+
+    // ─── Boot ─────────────────────────────────────────────────
+    initAI().then(() => {
+      setStatus('idle', 'San sang');
+      console.log('[Benchmark] AI pipeline ready');
+    });
+  </script>
+</body>
+</html>

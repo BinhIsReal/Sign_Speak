@@ -134,7 +134,7 @@ function showIncomingCallModal(callData) {
           <h3 class="text-base font-bold text-slate-900 dark:text-white">${callerName}</h3>
           <p class="text-xs text-primary font-bold mt-1.5 flex items-center justify-center gap-1">
             <span class="material-symbols-outlined text-[16px] animate-bounce">videocam</span>
-            <span>Cuộc gọi Video VSL Realtime...</span>
+            <span>Cuộc gọi Video đến...</span>
           </p>
         </div>
 

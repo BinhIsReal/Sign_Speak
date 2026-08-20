@@ -79,18 +79,20 @@ class SecurityGuardService {
   }
 
   async loadSidebarUserProfile() {
-    const avatarElem = document.getElementById('sidebarUserAvatar') || document.querySelector('a[href="profile.html"] div');
-    const nameElem = document.getElementById('sidebarUserName') || document.querySelector('a[href="profile.html"] span.text-xs') || document.querySelector('a[href="profile.html"] span.font-bold');
+    const avatarElem = document.getElementById('sidebarUserAvatar');
+    const nameElem = document.getElementById('sidebarUserName');
 
     if (!avatarElem && !nameElem) return;
 
     let displayName = localStorage.getItem('user_full_name') || localStorage.getItem('user_display_name');
+    let avatarUrl = localStorage.getItem('user_avatar_url') || '';
 
     if ((!displayName || displayName === 'User Profile' || displayName === 'User profile' || displayName === 'Đang tải...') && window.supabaseService) {
       try {
         const currentUser = await window.supabaseService.getCurrentUser();
         if (currentUser) {
           displayName = currentUser.user_metadata?.display_name || currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'User Profile';
+          avatarUrl = currentUser.avatar_url || currentUser.user_metadata?.avatar_url || avatarUrl;
         }
       } catch (e) {
         console.warn("Could not load user profile for sidebar:", e);
@@ -110,7 +112,14 @@ class SecurityGuardService {
       initials = displayName.substring(0, Math.min(2, displayName.length)).toUpperCase();
     }
 
-    if (avatarElem) avatarElem.innerText = initials;
+    if (avatarElem) {
+      if (avatarUrl && (avatarUrl.startsWith('http') || avatarUrl.startsWith('data:image') || avatarUrl.includes('/'))) {
+        avatarElem.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full" alt="Avatar" />`;
+        avatarElem.classList.add('overflow-hidden');
+      } else {
+        avatarElem.innerText = initials;
+      }
+    }
     if (nameElem) nameElem.innerText = displayName;
   }
 
@@ -163,9 +172,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // Auto Initialize Sidebar Collapse Engine
   window.securityGuard.initSidebarCollapse();
 
-  // Auto Refresh Sidebar Notification Badges
+  // Auto Refresh Sidebar Notification Badges, Global Realtime Messages & Presence
   if (window.supabaseService) {
     window.supabaseService.updateSidebarBadges();
+
+    const currentUserId = localStorage.getItem('user_id');
+    if (currentUserId) {
+      if (typeof window.supabaseService.subscribeGlobalUserMessages === 'function') {
+        window.supabaseService.subscribeGlobalUserMessages(currentUserId);
+      }
+      if (typeof window.supabaseService.initUserPresence === 'function') {
+        window.supabaseService.initUserPresence(currentUserId);
+      }
+    }
   }
 
   const currentPage = window.location.pathname.split('/').pop() || 'index.html';

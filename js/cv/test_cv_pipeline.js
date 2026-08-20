@@ -40,17 +40,18 @@ function runCVPipelineTests() {
   assert(report.isCompatible === true, "Dataset Adapter detects 126D compatibility correctly");
   assert(report.wordsFound.length === 2, "Dataset Adapter parses words correctly");
 
-  // 2. Test FeatureExtractor 147D Vector Generation & Velocity
-  console.log("\n--- 2. Testing FeatureExtractor (147D & Motion Velocity) ---");
+  // 2. Test FeatureExtractor 190D Vector Generation & Velocity
+  console.log("\n--- 2. Testing FeatureExtractor (190D & Motion Velocity) ---");
   const extractor = new FeatureExtractor();
   const mockHolisticResults = {
     poseLandmarks: Array.from({ length: 33 }, (_, i) => ({ x: 0.5, y: 0.5, z: 0 })),
     leftHandLandmarks: Array.from({ length: 21 }, (_, i) => ({ x: 0.1 * i, y: 0.2 * i, z: 0 })),
-    rightHandLandmarks: Array.from({ length: 21 }, (_, i) => ({ x: 0.1 * i + 0.5, y: 0.2 * i, z: 0 }))
+    rightHandLandmarks: Array.from({ length: 21 }, (_, i) => ({ x: 0.1 * i + 0.5, y: 0.2 * i, z: 0 })),
+    faceLandmarks: Array.from({ length: 468 }, (_, i) => ({ x: 0.05 * i, y: 0.05 * i, z: 0 }))
   };
 
   const processed = extractor.processFrame(mockHolisticResults);
-  assert(processed.vector !== null && processed.vector.length === 147, "Feature Extractor outputs 147D vector (126D hands + 9D spatial + 12D pose)");
+  assert(processed.vector !== null && processed.vector.length === 190, "Feature Extractor outputs 190D vector (126D hands + 10D finger ext + 9D spatial + 12D pose + 33D face)");
 
   // 3. Test OcclusionHandler short-term extrapolation
   console.log("\n--- 3. Testing OcclusionHandler ---");

@@ -1,6 +1,6 @@
 # Sign_Speak - Hệ Thống Dịch Ngôn Ngữ Ký Hiệu Việt Nam
 
-Ứng dụng web đột phá sử dụng Trí tuệ Nhân tạo (AI) và Computer Vision để phiên dịch Ngôn ngữ Ký hiệu Việt Nam (VSL) thành văn bản và giọng nói theo thời gian thực.
+Ứng dụng web đột phá sử dụng Trí tuệ Nhân tạo (AI) và Computer Vision để phiên dịch Ngôn ngữ Ký hiệu thành văn bản và giọng nói theo thời gian thực.
 
 ---
 
@@ -9,7 +9,7 @@
 ### 🎯 Phiên Dịch Thời Gian Thực
 
 - **Nhận diện cử chỉ bằng AI:** Sử dụng MediaPipe Hands với độ chính xác cao để phân tích chuyển động tay, vị trí và tư thế.
-- **Chế độ song ngữ:** Tự động phát hiện và dịch thuật giữa 2 ngôn ngữ ký hiệu Việt Nam và Tiếng Việt.
+- **Chế độ song ngữ:** Tự động phát hiện và dịch thuật giữa ngôn ngữ ký hiệu và Tiếng Việt.
 
 ### 🧩 Trí Tuệ Học Tập & Thích Ứng
 
@@ -18,7 +18,7 @@
 
 ### 🎮 Trải Nghiệm Tương Tác
 
-- **Game hóa (Gamification):** Tích hợp Mini Game VSL để biến quá trình học trở nên thú vị và hấp dẫn hơn.
+- **Game hóa (Gamification):** Tích hợp Mini Game để biến quá trình học trở nên thú vị và hấp dẫn hơn.
 - **Đề xuất từ vựng thông minh:** Gợi ý các ký hiệu và từ vựng liên quan dựa trên ngữ cảnh sử dụng.
 
 ### 🌐 Cộng Đồng & Kết Nối
@@ -81,10 +81,9 @@
 
 ```
 Sign_Speak/
-├── hub.html                # Trang chính - Dashboard
 ├── camera.html             # Trang nhận diện Camera trực tiếp
 ├── translator.html         # Công cụ Dịch giả Song ngữ
-├── game.html               # Mini Game học VSL
+├── game.html               # Mini Game học ký hiệu
 ├── contacts.html           # Mạng xã hội học tập
 ├── settings.html           # Cài đặt hệ thống
 ├── stats.html              # Thống kê & Báo cáo

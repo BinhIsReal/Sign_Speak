@@ -1156,7 +1156,7 @@ class SupabaseService {
           sender_id: f.id,
           recipient_id: currentUserId,
           sender_name: f.display_name,
-          text: isDeaf ? '🤟 Xin chào! Mình vừa gửi cử chỉ VSL cho bạn.' : '🎙️ Xin chào bạn! Rất vui được kết nối.',
+          text: isDeaf ? '🤟 Xin chào! Mình vừa gửi cử chỉ ký hiệu cho bạn.' : '🎙️ Xin chào bạn! Rất vui được kết nối.',
           timestamp: '10:00',
           read: false
         });

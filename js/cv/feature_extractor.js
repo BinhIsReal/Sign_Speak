@@ -1,5 +1,5 @@
 /**
- * FeatureExtractor for Sign_Speak VSL Gesture Recognition
+ * FeatureExtractor for Sign_Speak Gesture Recognition
  * Extracts 126D dual-hand landmarks + 10D Finger Extension Ratios + 9D Inter-Hand Spatial Features + 12D Pose landmarks
  * Implements smooth temporal Handedness tracking, Motion Velocity Trigger, and
  * Two-Tier Sentence Boundary Segmentation with Cooldown Protection for multi-phase gestures.
@@ -7,12 +7,12 @@
 
 class FeatureExtractor {
   constructor(options = {}) {
-    this.motionStartThreshold = options.motionStartThreshold || 0.010; // Trigger gesture start faster
+    this.motionStartThreshold = options.motionStartThreshold || 0.008; // Sensitive gesture start trigger
     this.motionStopThreshold = options.motionStopThreshold || 0.005;   // Velocity stop threshold
-    this.minFrames = options.minFrames || 5;                           // Minimum valid sequence frames
+    this.minFrames = options.minFrames || 4;                           // Rapid responsiveness (4 frames ~140ms)
     this.maxFrames = options.maxFrames || 35;                          // Maximum valid sequence frames
-    this.stillFrameTolerance = options.stillFrameTolerance || 8;       // Allow holding hand pose without premature stop
-    this.dipCooldownMs = options.dipCooldownMs || 350;                 // Cooldown window (ms) to prevent multi-phase gesture fragmentation
+    this.stillFrameTolerance = options.stillFrameTolerance || 4;       // Allow holding hand pose without premature stop
+    this.dipCooldownMs = options.dipCooldownMs || 300;                 // Short cooldown window (ms) for responsive word stream
 
     // State tracking
     this.lastLeftHand = null;
@@ -27,45 +27,46 @@ class FeatureExtractor {
   }
 
   /**
-   * Process raw MediaPipe Holistic/Hands results
+   * Extract raw 190D Feature Vector directly from MediaPipe results
    * @param {Object} results MediaPipe output
-   * @returns {Object} Extracted frame features and motion trigger status
+   * @returns {Array} 190D Feature Vector
    */
-  processFrame(results) {
-    if (!results) {
-      return { vector: null, isMoving: false, sequenceComplete: null, sentenceEnded: false };
-    }
+  extractFeatureVector(results) {
+    if (!results) return new Array(190).fill(0);
 
-    // Reference Scale Normalization Factor:
     let scale = 1.0;
     if (results.poseLandmarks && results.poseLandmarks.length >= 13 && results.poseLandmarks[11] && results.poseLandmarks[12]) {
       scale = this.euclideanDistance3D(results.poseLandmarks[11], results.poseLandmarks[12]);
     } else {
       const refLandmarks = results.leftHandLandmarks || results.rightHandLandmarks;
       if (refLandmarks && refLandmarks.length >= 10 && refLandmarks[0] && refLandmarks[9]) {
-        scale = this.euclideanDistance3D(refLandmarks[0], refLandmarks[9]) * 2.5; // Scale palm width to body shoulder scale
+        scale = this.euclideanDistance3D(refLandmarks[0], refLandmarks[9]) * 2.5;
       }
     }
     if (scale < 0.01) scale = 1.0;
 
-    // 1. Handedness Temporal Smoothing & Landmark Extraction (126D)
     const handData = this.extractHandLandmarks(results, scale);
-    const leftVec = handData.left;
-    const rightVec = handData.right;
-
-    // 2. 10D Finger Extension Ratios (5D per hand)
     const fingerExtVec = this.extractFingerExtensionFeatures(results.leftHandLandmarks, results.rightHandLandmarks);
-
-    // 3. 9D Inter-Hand Spatial Features (True 3D camera space relative wrist & index tip vectors)
     const spatialVec = this.extractSpatialFeatures(results.leftHandLandmarks, results.rightHandLandmarks, scale);
-
-    // 4. Backup Pose Landmarks (12D: Shoulders 11,12 & Elbows 13,14)
     const poseVec = this.extractPoseLandmarks(results.poseLandmarks);
+    const faceVec = this.extractSelectiveFaceFeatures(results.faceLandmarks, scale);
 
-    // Combine into full 157D Feature Vector (126D hands + 10D finger extension + 9D spatial + 12D pose)
-    const fullVector = [...leftVec, ...rightVec, ...fingerExtVec, ...spatialVec, ...poseVec];
+    return [...handData.left, ...handData.right, ...fingerExtVec, ...spatialVec, ...poseVec, ...faceVec];
+  }
 
-    // 5. Motion Velocity Trigger Calculation
+  /**
+   * Process raw MediaPipe Holistic/Hands results
+   * @param {Object} results MediaPipe output
+   * @returns {Object} Extracted frame features and motion trigger status
+   */
+  processFrame(results) {
+    if (!results) {
+      return { vector: null, isMoving: false, velocity: 0, sequenceComplete: null, sentenceEnded: false };
+    }
+
+    const fullVector = this.extractFeatureVector(results);
+
+    // Motion Velocity Trigger Calculation
     const velocity = this.calculateMotionVelocity(fullVector);
     const isMoving = velocity >= this.motionStartThreshold;
 
@@ -96,15 +97,11 @@ class FeatureExtractor {
 
       // Tier 1 Inter-Word Boundary Detection: Detect local velocity minima / inflection point
       const prevVelocity = this.lastVelocity || velocity;
-      const rawVelocityDip = (this.currentSequence.length >= 5 && velocity < 0.007 && prevVelocity > 0.010);
+      const rawVelocityDip = (this.currentSequence.length >= 4 && velocity < 0.007 && prevVelocity > 0.010);
       
-      // Cooldown Protection: Prevent splitting multi-phase gestures (e.g. "Vui vẻ", "Xin chào 2 tay")
+      // Cooldown Protection: Prevent splitting multi-phase gestures
       const isCooldownActive = (now - this.lastBoundaryCutTime < this.dipCooldownMs);
       const isLocalVelocityDip = rawVelocityDip && !isCooldownActive;
-
-      if (rawVelocityDip) {
-        console.log(`[Tier-1 Velocity Dip Log] Timestamp: ${now.toFixed(2)}ms | Frame: ${this.currentSequence.length} | PrevVel: ${prevVelocity.toFixed(4)} -> CurrVel: ${velocity.toFixed(4)} | CooldownBlocked: ${isCooldownActive}`);
-      }
 
       if (velocity <= this.motionStopThreshold || isLocalVelocityDip) {
         this.stillCounter++;
@@ -112,10 +109,10 @@ class FeatureExtractor {
         this.stillCounter = 0;
       }
 
-      // Termination or continuous gesture boundary transition (Requires >= 6 still frames ~0.7s or valid dip)
-      if (this.stillCounter >= 6 || isLocalVelocityDip || this.currentSequence.length >= this.maxFrames) {
+      // Termination or continuous gesture boundary transition (Requires >= 2 still frames ~70ms or valid dip)
+      if (this.stillCounter >= 2 || isLocalVelocityDip || this.currentSequence.length >= this.maxFrames) {
         if (this.currentSequence.length >= this.minFrames) {
-          // BOUNDARY TRIMMING: Trim 1 frame from start and 1 frame from end if sequence >= 6 to remove boundary transition noise
+          // BOUNDARY TRIMMING: Trim 1 frame from start/end if sequence >= 6 to remove boundary noise
           if (this.currentSequence.length >= 6) {
             sequenceComplete = this.currentSequence.slice(1, -1);
           } else {
@@ -277,6 +274,33 @@ class FeatureExtractor {
     for (let idx of poseIndices) {
       const lm = poseLandmarks[idx] || { x: 0, y: 0, z: 0 };
       vec.push(lm.x - nose.x, lm.y - nose.y, lm.z - nose.z);
+    }
+    return vec;
+  }
+
+  /**
+   * Extract 33D Selective Facial Features (11 keypoints x 3D)
+   * Keypoints chosen for facial expressions & mouth shapes:
+   * Eyebrows: 105, 66, 107 (Left), 336, 296 (Right) -> 5 points
+   * Lips & Mouth: 0 (Upper lip), 13 (Lower lip), 61 (Left corner), 291 (Right corner) -> 4 points
+   * Nose & Chin: 1 (Nose tip / anchor), 152 (Chin) -> 2 points
+   */
+  extractSelectiveFaceFeatures(faceLandmarks, scale = 1.0) {
+    if (!faceLandmarks || faceLandmarks.length < 150) {
+      return new Array(33).fill(0);
+    }
+    const safeScale = scale > 0.01 ? scale : 1.0;
+    const faceIndices = [105, 66, 107, 336, 296, 0, 13, 61, 291, 1, 152];
+    const nose = faceLandmarks[1] || faceLandmarks[0] || { x: 0.5, y: 0.5, z: 0 };
+    const vec = [];
+
+    for (let idx of faceIndices) {
+      const lm = faceLandmarks[idx] || { x: 0, y: 0, z: 0 };
+      vec.push(
+        parseFloat(((lm.x - nose.x) / safeScale).toFixed(4)),
+        parseFloat(((lm.y - nose.y) / safeScale).toFixed(4)),
+        parseFloat(((lm.z - nose.z) / safeScale).toFixed(4))
+      );
     }
     return vec;
   }

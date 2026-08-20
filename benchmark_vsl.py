@@ -42,11 +42,13 @@ def vector_distance(vec_a, vec_b):
     hand2_a = vec_a[63:126]
     finger_ext_a = vec_a[126:136] if len(vec_a) >= 136 else [0]*10
     spatial_a = vec_a[136:145] if len(vec_a) >= 145 else [0]*9
+    face_a = vec_a[157:190] if len(vec_a) >= 190 else [0]*33
     
     hand1_b = vec_b[0:63]
     hand2_b = vec_b[63:126]
     finger_ext_b = vec_b[126:136] if len(vec_b) >= 136 else [0]*10
     spatial_b = vec_b[136:145] if len(vec_b) >= 145 else [0]*9
+    face_b = vec_b[157:190] if len(vec_b) >= 190 else [0]*33
     
     dist_direct = sub_vector_dist(hand1_a, hand1_b) + sub_vector_dist(hand2_a, hand2_b)
     dist_swapped = sub_vector_dist(hand1_a, hand2_b) + sub_vector_dist(hand2_a, hand1_b)
@@ -54,9 +56,14 @@ def vector_distance(vec_a, vec_b):
     
     finger_ext_dist = sub_vector_dist(finger_ext_a, finger_ext_b)
     spatial_dist = sub_vector_dist(spatial_a, spatial_b)
+    face_dist = sub_vector_dist(face_a, face_b)
     
     has_spatial = any(v != 0 for v in spatial_a) or any(v != 0 for v in spatial_b)
-    if has_spatial:
+    has_face = any(v != 0 for v in face_a) or any(v != 0 for v in face_b)
+    
+    if has_face:
+        return (min_hand_dist * 0.45) + (finger_ext_dist * 0.20) + (spatial_dist * 0.25) + (face_dist * 0.10)
+    elif has_spatial:
         return (min_hand_dist * 0.50) + (finger_ext_dist * 0.20) + (spatial_dist * 0.30)
     else:
         return (min_hand_dist * 0.55) + (finger_ext_dist * 0.30) + (spatial_dist * 0.15)

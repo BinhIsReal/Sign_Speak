@@ -89,22 +89,22 @@
         };
       } catch (_e) {}
     </script>
-    <link rel="stylesheet" href="css/style.css" />
-    <script src="js/services/security_guard.js?v=20260820_heartbeat_v3"></script>
+    <link rel="stylesheet" href="css/style.css?v=2.5.0" />
+    <script src="js/services/security_guard.js?v=2.5.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/services/supabase_client.js?v=20260820_heartbeat_v3"></script>
-    <script src="js/services/push_notification_service.js?v=20260820_heartbeat_v3"></script>
-    <script src="js/services/global_call_listener.js?v=20260820_heartbeat_v3"></script>
-    <script src="js/services/webrtc_service.js?v=20260820_heartbeat_v3"></script>
-    <script src="js/services/tts_service.js?v=20260820_heartbeat_v3"></script>
-    <script src="js/services/stt_service.js?v=20260820_heartbeat_v3"></script>
-    <script src="js/services/context_resolver.js?v=20260820_heartbeat_v3"></script>
-    <script src="js/cv/feature_extractor.js?v=20260820_heartbeat_v3"></script>
-    <script src="js/cv/dtw_classifier.js?v=20260820_heartbeat_v3"></script>
-    <script src="js/call_controller.js?v=20260820_heartbeat_v3"></script>
+    <script src="js/services/supabase_client.js?v=2.5.0"></script>
+    <script src="js/services/push_notification_service.js?v=2.5.0"></script>
+    <script src="js/services/global_call_listener.js?v=2.5.0"></script>
+    <script src="js/services/webrtc_service.js?v=2.5.0"></script>
+    <script src="js/services/tts_service.js?v=2.5.0"></script>
+    <script src="js/services/stt_service.js?v=2.5.0"></script>
+    <script src="js/services/context_resolver.js?v=2.5.0"></script>
+    <script src="js/cv/feature_extractor.js?v=2.5.0"></script>
+    <script src="js/cv/dtw_classifier.js?v=2.5.0"></script>
+    <script src="js/call_controller.js?v=2.5.0"></script>
   </head>
   <body
     class="flex flex-col h-screen overflow-hidden bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-white font-sans antialiased select-none"
@@ -125,7 +125,7 @@
           <span class="material-symbols-outlined text-[20px]">picture_in_picture_alt</span>
         </button>
         <div class="flex flex-col min-w-0">
-          <h1 class="text-sm md:text-base font-bold text-slate-900 dark:text-white truncate">Cuộc gọi Video Sign Speak VSL</h1>
+          <h1 class="text-sm md:text-base font-bold text-slate-900 dark:text-white truncate">Cuộc gọi Video Sign Speak</h1>
           <div class="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
             <span
               id="callRoomBadge"
@@ -159,7 +159,7 @@
           class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
         >
           <span class="material-symbols-outlined text-[18px]">chat</span>
-          <span id="toggleSidebarLabel">Nhật ký & Chat VSL</span>
+          <span id="toggleSidebarLabel">Nhật ký & Trò chuyện</span>
         </button>
       </div>
     </header>
@@ -269,11 +269,11 @@
               id="subtitleText"
               class="text-sm sm:text-base md:text-lg font-bold text-white drop-shadow-md leading-relaxed tracking-wide"
             >
-              <span>Đang lắng nghe cử chỉ VSL và giọng nói...</span>
+              <span>Đang lắng nghe cử chỉ và giọng nói...</span>
               <span
                 id="subtitleConfidence"
                 class="text-xs text-sky-300 font-mono ml-2 opacity-90"
-                >(VSL: 94%)</span
+                >(Độ chính xác: 94%)</span
               >
             </p>
           </div>
@@ -310,7 +310,7 @@
             <span class="material-symbols-outlined text-primary text-base"
               >forum</span
             >
-            <span>Nhật ký & Chat VSL</span>
+            <span>Nhật ký & Trò chuyện</span>
           </div>
           <!-- Close button on mobile overlay -->
           <button
@@ -330,7 +330,7 @@
           <div class="flex flex-col gap-1 items-start">
             <div class="flex items-center gap-2 px-1">
               <span class="text-[10px] font-bold text-primary dark:text-sky-400 tracking-tight uppercase"
-                >HỆ THỐNG VSL</span
+                >HỆ THỐNG</span
               >
               <span class="text-[10px] text-slate-400 dark:text-slate-500 font-medium"
                 >Hệ thống</span
@@ -340,7 +340,7 @@
               class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 rounded-2xl px-3.5 py-2 max-w-[95%] messenger-shadow"
             >
               <p class="text-xs leading-relaxed">
-                Đã kết nối cuộc gọi Video VSL và sẵn sàng suy luận cử chỉ.
+                Đã kết nối cuộc gọi Video và sẵn sàng nhận diện cử chỉ.
               </p>
             </div>
           </div>
@@ -393,7 +393,7 @@
       <button
         id="toggleSTTBtn"
         class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-transparent flex items-center justify-center transition-all shadow-md active:scale-95 cursor-pointer"
-        title="Dịch cử chỉ VSL & Giọng nói"
+        title="Dịch cử chỉ & Giọng nói"
       >
         <span class="material-symbols-outlined text-[22px]">speech_to_text</span>
       </button>
@@ -492,7 +492,7 @@
             </div>
             <div class="flex flex-col flex-1 min-w-0">
               <span class="text-xs font-bold text-slate-900 dark:text-white">Giọng đọc AI</span>
-              <span class="text-[11px] text-slate-500">Tự động đọc giọng nói từ cử chỉ VSL</span>
+              <span class="text-[11px] text-slate-500">Tự động đọc giọng nói từ cử chỉ</span>
             </div>
           </button>
 
@@ -530,7 +530,7 @@
       >
         <div class="flex items-center gap-1.5 min-w-0">
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-          <span id="miniPartnerName" class="text-[11px] font-bold text-white truncate">Cuộc gọi VSL</span>
+          <span id="miniPartnerName" class="text-[11px] font-bold text-white truncate">Cuộc gọi Video</span>
         </div>
         <div class="flex items-center gap-1 shrink-0">
           <!-- Maximize Icon Button -->
@@ -570,7 +570,7 @@
             id="miniSubtitleBadge"
             class="bg-black/75 backdrop-blur-sm px-2.5 py-1 rounded-lg text-center border border-white/10 text-[11px] font-bold text-white shadow-md truncate"
           >
-            <span id="miniSubtitleText">Đang lắng nghe cử chỉ VSL...</span>
+            <span id="miniSubtitleText">Đang lắng nghe cử chỉ...</span>
           </div>
         </div>
 

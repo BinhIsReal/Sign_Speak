@@ -248,7 +248,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <a href="index.html?chat_with=${encodeURIComponent(c.id)}" class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-primary hover:text-white dark:hover:bg-primary transition-all" title="Nhắn tin với ${escape(c.display_name)}">
               <span class="material-symbols-outlined text-[18px]">chat</span>
             </a>
-            <a href="${callUrl}" class="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary-container transition-all shadow-md shadow-primary/20" title="Gọi Video VSL">
+            <a href="${callUrl}" class="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary-container transition-all shadow-md shadow-primary/20" title="Gọi Video">
               <span class="material-symbols-outlined text-[18px]">videocam</span>
             </a>
             <div class="relative">
@@ -319,7 +319,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="min-w-0 flex-1">
               <h3 class="text-sm font-bold text-slate-900 dark:text-white truncate">${escape(c.display_name)}</h3>
               <p class="text-xs font-mono font-bold text-primary truncate">${escape(c.username)}</p>
-              <p class="text-[11px] text-slate-500 dark:text-slate-400 font-semibold truncate mt-0.5">${c.role === "deaf" ? "Người Khiếm Thính (VSL)" : "Người Nghe Nói"}</p>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 font-semibold truncate mt-0.5">${c.role === "deaf" ? "Người Khiếm Thính" : "Người Nghe Nói"}</p>
             </div>
           </div>
           ${actionButtons}

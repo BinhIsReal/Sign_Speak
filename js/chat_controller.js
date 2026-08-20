@@ -118,7 +118,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     if (activeChatName)
       activeChatName.innerText = escape(
-        partner.display_name || "Người dùng VSL",
+        partner.display_name || "Người dùng",
       );
     const isPartnerOnline = window.supabaseService.isUserOnline(partner.id);
     if (activeChatSub) {
@@ -406,9 +406,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const isActive = activePartner && activePartner.id === f.id;
         const rawLastText = lastMsg
           ? lastMsg.text
-          : f.role === "deaf"
-            ? "Sẵn sàng trò chuyện VSL"
-            : "Sẵn sàng trò chuyện STT";
+          : "Sẵn sàng trò chuyện STT";
         const safeLastText = escape(
           rawLastText.length > 25
             ? rawLastText.substring(0, 25) + "..."
@@ -438,19 +436,19 @@ document.addEventListener("DOMContentLoaded", async () => {
               <div class="w-11 h-11 rounded-full ${isActive ? "bg-primary text-white" : isUnread ? "bg-rose-500 text-white" : "bg-slate-200 text-slate-700"} font-bold text-sm flex items-center justify-center shadow-sm overflow-hidden">
                 ${(f.avatar_url || f.avatar) && ((f.avatar_url || f.avatar).startsWith('http') || (f.avatar_url || f.avatar).startsWith('data:image') || (f.avatar_url || f.avatar).includes('/'))
                   ? `<img src="${escape(f.avatar_url || f.avatar)}" class="w-full h-full object-cover rounded-full" alt="${escape(f.display_name)}" />`
-                  : escape(f.avatar || "US")}
+                  : escape(f.avatar || (f.display_name ? f.display_name.substring(0, 2).toUpperCase() : "US"))}
               </div>
-              <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full ${isOnline ? "bg-emerald-500" : "bg-slate-400"} border-2 border-white"></span>
+              <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${isOnline ? "bg-emerald-500" : "bg-slate-400"}"></span>
             </div>
-            <div class="flex-grow min-w-0 pr-1">
-              <div class="flex justify-between items-baseline mb-0.5">
-                <span class="text-xs font-bold ${isActive ? "text-primary" : isUnread ? "text-rose-600 font-extrabold" : "text-slate-900"} truncate">${escape(f.display_name)}</span>
-                <span class="text-[10px] ${isUnread ? "text-rose-500 font-bold" : "text-slate-400 font-normal"} ml-1 shrink-0">${safeTime}</span>
-              </div>
-              <p class="text-[11px] ${isActive ? "text-primary font-semibold" : isUnread ? "text-rose-600 font-bold" : "text-slate-500"} truncate">${safeLastText}</p>
+            <div class="flex flex-col min-w-0 pr-2">
+              <span class="text-xs font-bold ${isUnread ? "text-rose-600 font-extrabold" : "text-slate-900"} truncate">${escape(f.display_name)}</span>
+              <p class="text-[11px] ${isUnread ? "text-rose-600 font-bold" : "text-slate-500"} truncate">${safeLastText}</p>
             </div>
           </div>
-          ${unreadBadgeHTML}
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] text-slate-400 font-semibold shrink-0">${safeTime}</span>
+            ${unreadBadgeHTML}
+          </div>
         </div>
       `;
       })
@@ -461,9 +459,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     conversationsList.querySelectorAll("[data-partner-id]").forEach((card) => {
       card.addEventListener("click", () => {
         const partnerId = card.getAttribute("data-partner-id");
-        const targetPartner = friends.find((f) => f.id === partnerId);
-        if (targetPartner) {
-          setPartnerDetails(targetPartner, true, true);
+        const selectedPartner = sortedFriends.find((f) => f.id === partnerId);
+        if (selectedPartner) {
+          setPartnerDetails(selectedPartner, true, true);
         }
       });
     });
@@ -484,16 +482,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     chatForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const rawText = chatMessageInput.value;
-      const cleanText = sanitize(rawText);
+      const cleanText = sanitize(rawText).trim();
 
       if (!cleanText || !activePartner) return;
 
       const now = new Date();
       const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
-      const msgId = window.supabaseService.generateUUID();
 
       const msgObj = {
-        id: msgId,
+        id: "msg_" + Math.random().toString(36).substr(2, 9),
         room_id: activeRoomId,
         sender_id: currentUserId,
         recipient_id: activePartner.id,
@@ -528,6 +525,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   window.loadConversationsListGlobal = () => {
     loadConversationsList(conversationsSearchInput ? conversationsSearchInput.value : "");
+  };
+
+  window.openChatWithUser = async (partnerId) => {
+    if (!partnerId) return;
+    try {
+      const allUsers = await window.supabaseService.searchGlobalUsers("", "all");
+      const target = allUsers.find(u => u.id === partnerId);
+      if (target) {
+        setPartnerDetails(target, true, true);
+        if (chatMessageInput) {
+          setTimeout(() => chatMessageInput.focus(), 150);
+        }
+      }
+    } catch (e) {
+      console.warn("[openChatWithUser error]:", e);
+    }
   };
 
   await loadConversationsList();

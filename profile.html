@@ -15,11 +15,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hồ sơ cá nhân | Sign Speak</title>
     <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&amp;display=swap"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block"
       rel="stylesheet"
     />
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -98,149 +98,20 @@
         };
       } catch (_e) {}
     </script>
-    <link rel="stylesheet" href="css/style.css" />
-    <script src="js/services/security_guard.js"></script>
+    <link rel="stylesheet" href="css/style.css?v=2.5.0" />
+    <script src="js/services/security_guard.js?v=2.5.0"></script>
+    <script src="js/sidebar_component.js?v=2.5.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/services/supabase_client.js"></script>
-    <script src="js/services/global_call_listener.js"></script>
-    <script src="js/profile_controller.js"></script>
+    <script src="js/services/supabase_client.js?v=2.5.0"></script>
+    <script src="js/services/push_notification_service.js?v=2.5.0"></script>
+    <script src="js/services/global_call_listener.js?v=2.5.0"></script>
+    <script src="js/profile_controller.js?v=2.5.0"></script>
   </head>
   <body
     class="flex min-h-screen overflow-hidden bg-background text-on-background antialiased"
   >
-    <!-- Left Navigation Sidebar -->
-    <nav
-      class="fixed left-0 top-0 bottom-0 flex flex-col z-40 h-screen w-64 flex-shrink-0 bg-white border-r border-slate-200/80 messenger-shadow"
-    >
-      <!-- Top Brand & Status -->
-      <div class="p-6 flex items-center justify-between">
-        <div class="sidebar-text-group flex flex-col gap-1">
-          <a
-            href="hub.html"
-            class="text-2xl font-bold text-primary tracking-tight"
-            >Sign Speak</a
-          >
-          <div class="flex items-center gap-2 mt-1">
-            <span class="w-2.5 h-2.5 rounded-full bg-[#31a24c]"></span>
-            <p class="text-xs font-semibold text-slate-500">Active</p>
-          </div>
-        </div>
-        <button
-          id="toggleSidebarCollapseBtn"
-          class="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center cursor-pointer shrink-0"
-          title="Thu gọn / Mở rộng Sidebar"
-        >
-          <span
-            class="material-symbols-outlined text-[22px]"
-            id="sidebarCollapseIcon"
-            >menu_open</span
-          >
-        </button>
-      </div>
-
-      <!-- Main Menu Links -->
-      <div class="mt-2 px-4 flex flex-col gap-1.5 flex-grow">
-        <!-- Messages Tab -->
-        <a
-          href="index.html"
-          class="relative flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 hover:bg-slate-100/80 hover:text-primary transition-all group"
-        >
-          <div class="flex items-center gap-3.5">
-            <span
-              class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform"
-              data-icon="chat"
-              >chat</span
-            >
-            <span class="text-sm font-medium">Messages</span>
-          </div>
-          <span id="sidebarMessagesBadge" class="nav-badge hidden">0</span>
-        </a>
-        <!-- Contacts Tab -->
-        <a
-          href="contacts.html"
-          class="relative flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 hover:bg-slate-100/80 hover:text-primary transition-all group"
-        >
-          <div class="flex items-center gap-3.5">
-            <span
-              class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform"
-              data-icon="contacts"
-              >contacts</span
-            >
-            <span class="text-sm font-medium">Contacts</span>
-          </div>
-          <span id="sidebarContactsBadge" class="nav-badge hidden">0</span>
-        </a>
-        <!-- Settings Tab -->
-        <a
-          href="settings.html"
-          class="flex items-center gap-3.5 px-4 py-3 rounded-2xl text-slate-600 hover:bg-slate-100/80 hover:text-primary transition-all group"
-        >
-          <span
-            class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform"
-            data-icon="settings"
-            >settings</span
-          >
-          <span class="text-sm font-medium">Settings</span>
-        </a>
-
-        <!-- Floating Action Button -->
-        <a
-          href="call.html"
-          class="mt-6 mx-1 flex items-center justify-center gap-2 bg-primary text-white rounded-full py-3.5 px-4 shadow-lg shadow-primary/25 active:scale-95 duration-200 hover:brightness-110"
-        >
-          <span class="material-symbols-outlined text-[20px]">add</span>
-          <span class="text-sm font-bold tracking-wide">Soạn tin mới</span>
-        </a>
-      </div>
-
-      <!-- Bottom Fixed Section -->
-      <div class="p-4 border-t border-slate-100 flex flex-col gap-1">
-        <a
-          href="settings.html"
-          class="flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-primary transition-all text-xs font-semibold"
-        >
-          <span
-            class="material-symbols-outlined text-[20px]"
-            data-icon="accessibility_new"
-            >accessibility_new</span
-          >
-          <span>Accessibility</span>
-        </a>
-        <a
-          href="gesture_collector.html"
-          class="flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-primary transition-all text-xs font-semibold"
-        >
-          <span class="material-symbols-outlined text-[20px]" data-icon="help"
-            >help</span
-          >
-          <span>Help / Collector</span>
-        </a>
-
-        <!-- User Profile Link at Bottom - Active -->
-        <a
-          id="sidebarProfileLink"
-          href="profile.html"
-          class="mt-2 flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-primary/10 border-r-4 border-primary transition-all shadow-sm"
-        >
-          <div
-            id="sidebarUserAvatar"
-            class="w-10 h-10 rounded-full bg-primary text-white font-bold flex items-center justify-center shrink-0 text-sm shadow-sm"
-          >
-            --
-          </div>
-          <div class="flex flex-col min-w-0">
-            <span
-              id="sidebarUserName"
-              class="text-xs font-bold text-primary truncate"
-              >Đang tải...</span
-            >
-            <span class="text-[11px] text-primary/80 font-medium truncate"
-              >Tài khoản cá nhân</span
-            >
-          </div>
-        </a>
-      </div>
-    </nav>
+    <!-- Left Navigation Sidebar Component -->
+    <div id="sidebarContainer"></div>
 
     <!-- Main Content Canvas -->
     <main
@@ -250,45 +121,68 @@
       <header
         class="flex justify-between items-center w-full px-8 h-16 bg-white border-b border-slate-200/80 messenger-shadow shrink-0 z-10"
       >
-        <div class="flex items-center gap-4">
-          <h2 class="text-lg font-bold text-slate-900 tracking-tight">
+        <div class="flex items-center gap-3">
+          <a
+            href="menu.html"
+            class="md:hidden p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0"
+            title="Quay lại Menu"
+          >
+            <span class="material-symbols-outlined text-[24px]"
+              >arrow_back</span
+            >
+          </a>
+          <h2
+            class="text-lg font-bold text-slate-900 dark:text-white tracking-tight"
+          >
             Hồ sơ cá nhân Sign Speak
           </h2>
-        </div>
-        <div class="flex items-center gap-4">
-          <a
-            href="index.html"
-            class="px-5 py-2 bg-slate-100 text-slate-700 hover:bg-primary hover:text-white rounded-full text-xs font-bold transition-all shadow-sm"
-          >
-            Trang Chủ
-          </a>
         </div>
       </header>
 
       <!-- Profile Content Scroll Area -->
-      <div class="flex-1 overflow-y-auto p-8 space-y-8">
-        <div class="max-w-5xl mx-auto space-y-8">
+      <div class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8">
+        <div class="max-w-6xl mx-auto space-y-6 md:space-y-8">
           <!-- Header Hero Banner Card -->
           <section
-            class="bg-gradient-to-r from-primary/95 to-primary-container text-white p-8 rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden"
+            class="bg-gradient-to-r from-primary/95 to-primary-container text-white p-6 md:p-8 rounded-3xl shadow-xl flex flex-col items-center justify-center text-center gap-4 relative overflow-hidden"
           >
-            <div class="flex items-center gap-6 z-10">
-              <div class="relative">
+            <div
+              class="flex flex-col items-center justify-center text-center gap-3 z-10 w-full"
+            >
+              <div class="relative group shrink-0">
                 <div
                   id="userAvatarInitial"
-                  class="w-24 h-24 rounded-full bg-white text-primary font-extrabold text-3xl flex items-center justify-center shadow-lg border-4 border-white/30"
+                  class="w-24 h-24 min-w-[96px] min-h-[96px] max-w-[96px] max-h-[96px] rounded-full bg-white text-primary font-extrabold text-3xl flex items-center justify-center shadow-lg border-4 border-white/30 overflow-hidden relative shrink-0 aspect-square"
                 >
                   NA
                 </div>
+                <button
+                  id="changeAvatarBtn"
+                  type="button"
+                  class="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white text-primary shadow-md flex items-center justify-center hover:bg-slate-100 hover:scale-110 active:scale-95 transition-all cursor-pointer border border-slate-200 z-10"
+                  title="Thay đổi ảnh đại diện"
+                >
+                  <span class="material-symbols-outlined text-[18px]"
+                    >photo_camera</span
+                  >
+                </button>
+                <input
+                  type="file"
+                  id="avatarFileInput"
+                  accept="image/*"
+                  class="hidden"
+                />
                 <span
-                  class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-emerald-400 border-2 border-white"
+                  class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-emerald-400 border-2 border-white z-20 pointer-events-none"
                 ></span>
               </div>
-              <div class="space-y-1.5">
-                <div class="flex items-center gap-3">
+              <div
+                class="hidden md:flex flex-col items-center text-center space-y-2 w-full"
+              >
+                <div class="flex flex-wrap items-center justify-center gap-2">
                   <h1
                     id="profileDisplayName"
-                    class="text-2xl font-extrabold tracking-tight"
+                    class="text-xl md:text-2xl font-extrabold tracking-tight"
                   >
                     Nguyễn Văn An
                   </h1>
@@ -296,11 +190,13 @@
                     <span
                       class="px-3 py-1 rounded-full bg-white/20 text-white font-bold text-xs backdrop-blur-md"
                     >
-                      Người Khiếm Thính (VSL)</span
+                      Người Khiếm Thính</span
                     >
                   </div>
                 </div>
-                <div class="flex items-center gap-2">
+                <div
+                  class="flex flex-wrap items-center justify-center gap-2 text-white/90"
+                >
                   <span
                     id="profileUsernameDisplay"
                     class="font-mono text-xs font-bold px-2.5 py-1 bg-white/20 rounded-full text-white border border-white/30"
@@ -308,7 +204,7 @@
                   >
                   <span
                     id="profileEmailDisplay"
-                    class="text-sm text-white/80 font-medium"
+                    class="text-xs md:text-sm text-white/90 font-medium"
                     >nguyen.an@signspeak.com</span
                   >
                 </div>
@@ -316,11 +212,11 @@
             </div>
           </section>
 
-          <!-- Content Grid -->
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <!-- Content Grid (Form Left 2 cols, Stats & Actions Right 1 col on Tablet & Desktop) -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-start">
             <!-- Left 2-Cols: Edit Personal Info Form -->
             <section
-              class="lg:col-span-2 bg-white p-7 rounded-3xl border border-slate-200/80 shadow-sm space-y-6"
+              class="md:col-span-2 bg-white p-6 md:p-7 rounded-3xl border border-slate-200/80 shadow-sm space-y-6"
             >
               <div
                 class="flex items-center gap-3 pb-4 border-b border-slate-100"
@@ -388,11 +284,9 @@
                   </div>
                   <div
                     id="usernameCooldownNotice"
-                    class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-xs font-medium"
+                    class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-xs font-medium leading-relaxed"
                   >
-                    💡 Mã định danh dùng để kết bạn và tìm kiếm. Hệ thống tự
-                    động gắn dấu <strong class="text-primary">@</strong>. Hạn
-                    chế đổi 14 ngày/lần.
+                    💡 Mã định danh dùng để kết bạn và tìm kiếm. Hệ thống tự động gắn dấu <strong class="text-primary">@</strong>. Hạn chế đổi 14 ngày/lần.
                   </div>
                 </div>
 
@@ -435,7 +329,7 @@
                     class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
                   >
                     <option value="deaf">
-                      Người Khiếm Thính (Chủ yếu dùng Ngôn ngữ ký hiệu VSL)
+                      Người Khiếm Thính (Chủ yếu dùng Ngôn ngữ ký hiệu)
                     </option>
                     <option value="hearing">
                       Người Nghe Nói (Chủ yếu dùng Giọng nói & Phụ đề)
@@ -447,7 +341,7 @@
 
                 <button
                   type="submit"
-                  class="w-full py-3.5 bg-primary text-white rounded-2xl font-bold text-sm shadow-md shadow-primary/20 hover:bg-primary-container active:scale-95 transition-all"
+                  class="w-full py-3.5 bg-primary text-white rounded-2xl font-bold text-sm shadow-md shadow-primary/20 hover:bg-primary-container active:scale-95 transition-all cursor-pointer"
                 >
                   💾 Lưu thay đổi hồ sơ
                 </button>
@@ -455,7 +349,7 @@
             </section>
 
             <!-- Right 1-Col: Account Security & Statistics -->
-            <div class="space-y-6">
+            <div class="md:col-span-1 space-y-6">
               <!-- Card 1: Communication Stats -->
               <section
                 class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4"
@@ -466,7 +360,7 @@
                   <span class="material-symbols-outlined text-primary text-base"
                     >analytics</span
                   >
-                  <span>Thống kê giao tiếp VSL</span>
+                  <span>Thống kê giao tiếp</span>
                 </h3>
                 <div class="space-y-3">
                   <div
@@ -481,7 +375,7 @@
                     class="flex justify-between items-center text-xs p-3 bg-slate-50 rounded-2xl"
                   >
                     <span class="text-slate-600 font-medium"
-                      >Số cử chỉ VSL đã dịch:</span
+                      >Số cử chỉ đã dịch:</span
                     >
                     <span class="font-bold text-primary">1,420 từ</span>
                   </div>
@@ -498,9 +392,39 @@
                 </div>
               </section>
 
-              <!-- Card 2: Security & Actions -->
+              <!-- Card 2: System Settings Quick Access (Mobile Menu Hub) -->
               <section
-                class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4"
+                class="bg-white dark:bg-[#151e32] p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4"
+              >
+                <h3
+                  class="text-sm font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2"
+                >
+                  <span class="material-symbols-outlined text-primary text-base"
+                    >settings</span
+                  >
+                  <span>Cài đặt hệ thống & Giao diện</span>
+                </h3>
+                <a
+                  href="settings.html"
+                  class="w-full py-3 px-4 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-bold active:scale-95 transition-all flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700"
+                >
+                  <div class="flex items-center gap-2.5">
+                    <span
+                      class="material-symbols-outlined text-primary text-[20px]"
+                      >tune</span
+                    >
+                    <span>Tùy chỉnh Cài đặt & Chế độ sáng tối</span>
+                  </div>
+                  <span
+                    class="material-symbols-outlined text-slate-400 text-[18px]"
+                    >chevron_right</span
+                  >
+                </a>
+              </section>
+
+              <!-- Card 3: Security & Actions (Hidden on Mobile, menu.html has mobile logout) -->
+              <section
+                class="hidden md:block bg-white dark:bg-[#151e32] p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4"
               >
                 <h3
                   class="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2"
@@ -513,7 +437,7 @@
                 <div class="space-y-2.5">
                   <button
                     id="logoutBtn"
-                    class="w-full py-3 rounded-2xl text-xs font-bold active:scale-95 transition-all flex items-center justify-center gap-2 shadow-md shadow-rose-500/20 hover:brightness-110"
+                    class="w-full py-3 rounded-2xl text-xs font-bold active:scale-95 transition-all flex items-center justify-center gap-2 shadow-md shadow-rose-500/20 hover:brightness-110 cursor-pointer"
                     style="background-color: rgb(223, 24, 68); color: #ffffff"
                   >
                     <span class="material-symbols-outlined text-[18px]"

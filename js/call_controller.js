@@ -1,5 +1,5 @@
 /**
- * Call Controller for Sign_Speak Realtime WebRTC Video & VSL MediaPipe AI Pipeline
+ * Call Controller for Sign_Speak Realtime WebRTC Video & Gesture MediaPipe AI Pipeline
  * Optimized 30 FPS Native Performance with Inline Chat, Dynamic Partner Name & Sidebar Toggle Controls.
  */
 
@@ -189,7 +189,7 @@ async function loadClassifierTemplates() {
     templatesToLoad.forEach(t => templateMap.set(t.id, t));
     const combined = Array.from(templateMap.values());
     dtwClassifier.loadTemplates(combined);
-    console.log(`[Sign Speak Call] Đã nạp thành công ${combined.length} mẫu cử chỉ VSL (toàn bộ 35 từ & bảng chữ cái) vào DTW Classifier!`);
+    console.log(`[Sign Speak Call] Đã nạp thành công ${combined.length} mẫu cử chỉ ký hiệu (toàn bộ 35 từ & bảng chữ cái) vào DTW Classifier!`);
   } catch (err) {
     console.warn("Lỗi nạp assets/data/vsl_dataset.json:", err);
     if (templatesToLoad.length > 0) {
@@ -436,9 +436,9 @@ async function initCall() {
 
         const senderLabel = signal.senderName || 'Đối Phương';
 
-        if (signal.kind === 'vsl') {
-          updateSubtitleDisplay(`🤟 [${senderLabel} (VSL)]: ${signal.text}`, `VSL ${signal.confidence || 95}%`);
-          addTranscriptLog(`${senderLabel} (VSL)`, signal.text, false);
+        if (signal.kind === 'vsl' || signal.kind === 'gesture') {
+          updateSubtitleDisplay(`🤟 [${senderLabel}]: ${signal.text}`, `Độ khớp: ${signal.confidence || 95}%`);
+          addTranscriptLog(`${senderLabel}`, signal.text, false);
 
           if (window.ttsService && !isTtsMuted) {
             // Speak ONLY the newly recognized gesture word/token, NOT the accumulated sentence from the beginning!
@@ -652,7 +652,7 @@ function onResults(results) {
       if (accumulatedSentenceWords.length > 0) {
         const finalSentence = accumulatedSentenceWords.join(' ');
         console.log(`[Sentence Finalized]: "${finalSentence}"`);
-        addTranscriptLog('TÔI (VSL)', finalSentence, true);
+        addTranscriptLog('TÔI', finalSentence, true);
         accumulatedSentenceWords = [];
       }
     }
@@ -704,7 +704,7 @@ function onResults(results) {
         let resolvedWord = prediction.word;
         if (window.contextResolver) {
           const urlParams = new URLSearchParams(window.location.search);
-          const currentRoomId = urlParams.get('room') || 'room_demo_vsl';
+          const currentRoomId = urlParams.get('room') || 'room_default';
           const resolvedObj = window.contextResolver.resolve(prediction.word, [], currentRoomId);
           resolvedWord = resolvedObj.primaryWord;
         }
@@ -712,21 +712,21 @@ function onResults(results) {
         accumulatedSentenceWords.push(resolvedWord);
         const cumulativeText = accumulatedSentenceWords.join(' ');
 
-        updateSubtitleDisplay(`🤟 [Bạn (VSL)]: ${cumulativeText}`, `VSL ${prediction.confidence}%`);
+        updateSubtitleDisplay(`🤟 [Bạn]: ${cumulativeText}`, `Độ khớp: ${prediction.confidence}%`);
 
         // Speak the recognized gesture word/token immediately on the local speaker!
         if (window.ttsService && !isTtsMuted) {
           window.ttsService.speak(resolvedWord);
         }
 
-        // Broadcast VSL gesture text to Partner Realtime over Supabase Realtime Signaling Channel!
+        // Broadcast gesture text to Partner Realtime over Supabase Realtime Signaling Channel!
         const currentUser = window.supabaseService ? window.supabaseService.cachedCurrentUser : null;
         const senderId = globalCurrentUserId || (currentUser ? currentUser.id : (sessionStorage.getItem('call_user_id') || 'usr_local'));
         const senderName = globalCurrentUserName || (currentUser ? (currentUser.user_metadata?.display_name || 'Tôi') : 'Tôi');
 
         window.supabaseService.sendSignalingMessage({
           type: 'multimodal-subtitle',
-          kind: 'vsl',
+          kind: 'gesture',
           text: cumulativeText,
           word: resolvedWord,
           confidence: prediction.confidence,
@@ -773,7 +773,6 @@ function addTranscriptLog(sender, text, isFromMe = null) {
       senderUpper === 'TÔI' ||
       senderUpper.startsWith('TÔI ') ||
       senderUpper.includes('(TÔI)') ||
-      senderUpper.includes('TÔI (VSL)') ||
       senderUpper.includes('TÔI (STT)') ||
       senderUpper.startsWith(currentUserName.toUpperCase()) ||
       senderUpper === currentUserName.toUpperCase()
@@ -1116,7 +1115,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (err === 'unsupported_browser') {
               deactivateSttUI();
               window.sttService.stopListening();
-              updateSubtitleDisplay('Đang lắng nghe cử chỉ VSL và giọng nói...', 'VSL System');
+              updateSubtitleDisplay('Đang lắng nghe cử chỉ và giọng nói...', 'Hệ thống');
               alert("Trình duyệt không hỗ trợ Web Speech API. Vui lòng dùng Google Chrome hoặc Microsoft Edge.");
               return;
             }
@@ -1137,7 +1136,7 @@ document.addEventListener('DOMContentLoaded', () => {
         activateSttUI();
       } else {
         window.sttService.stopListening();
-        updateSubtitleDisplay('Đang lắng nghe cử chỉ VSL và giọng nói...', 'VSL System');
+        updateSubtitleDisplay('Đang lắng nghe cử chỉ và giọng nói...', 'Hệ thống');
         deactivateSttUI();
       }
     });
@@ -1152,12 +1151,12 @@ document.addEventListener('DOMContentLoaded', () => {
         ttsBtn.classList.add('bg-rose-600', 'text-white');
         ttsBtn.classList.remove('bg-surface', 'text-primary');
         if (icon) icon.innerText = 'volume_off';
-        ttsBtn.title = "Đã tắt tiếng AI đọc dịch VSL (Click để Bật lại)";
+        ttsBtn.title = "Đã tắt tiếng AI đọc dịch (Click để Bật lại)";
       } else {
         ttsBtn.classList.remove('bg-rose-600', 'text-white');
         ttsBtn.classList.add('bg-surface', 'text-primary');
         if (icon) icon.innerText = 'volume_up';
-        ttsBtn.title = "Đang bật tiếng AI đọc dịch VSL (Click để Tắt)";
+        ttsBtn.title = "Đang bật tiếng AI đọc dịch (Click để Tắt)";
       }
     });
   }
@@ -1385,7 +1384,7 @@ function initCallMinimizeManager() {
 
   const urlParams = new URLSearchParams(window.location.search);
   const partnerName = urlParams.get('partner') || 'Người Đối Diện';
-  const roomName = urlParams.get('room') || 'Phòng VSL';
+  const roomName = urlParams.get('room') || 'Phòng Gọi';
 
   const closeMoreModalSafe = () => {
     const moreModal = document.getElementById('moreCallOptionsModal');
@@ -1604,7 +1603,7 @@ function initCallMinimizeManager() {
               <!-- 3. Live Subtitle Overlay inside PiP (NẰM SÁT NGAY TRÊN THANH CÔNG CỤ) -->
               <div class="pip-sub-box">
                 <div class="pip-sub-content">
-                  <span id="pipSubtitleText">Đang lắng nghe cử chỉ VSL...</span>
+                  <span id="pipSubtitleText">Đang lắng nghe cử chỉ...</span>
                   <span id="pipSubtitleConfidence" style="font-size: 10px; color: #7dd3fc; margin-left: 4px; font-family: monospace;"></span>
                 </div>
               </div>

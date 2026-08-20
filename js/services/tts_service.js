@@ -1,261 +1,436 @@
 /**
  * Vietnamese Text-to-Speech (TTS) Service for Sign_Speak
- * 
- * Sequential Audio Queue Architecture + Dynamic Speech Fallback:
- * - Queues up recognized gesture words sequentially in real-time.
- * - Checks preloaded .wav audio cache first (0ms latency, 100% offline).
- * - Dynamically speaks ANY newly added custom words or letters ("H", "A", "B", "C", "Xin chào")!
+ *
+ * Architecture:
+ * - Dictionary words (slugMap): phát ngay file .wav thu âm chất lượng cao (0ms latency).
+ * - Custom words (user-added): dùng Web Speech API với strict vi-VN voice.
+ *   Nếu không có voice tiếng Việt -> bỏ qua hoàn toàn, không phát giọng tiếng Anh.
+ * - speechSynthesis KHÔNG BAO GIỜ được dùng cho câu tích luỹ (cumulativeText).
+ *   speak() chỉ nhận 1 token từ mới nhất (e.g. "A", "Tôi", "tên là").
  */
 
 class TTSService {
   constructor(options = {}) {
     // Dictionary Slug Mapping: (word text / id) -> audio file slug
     this.slugMap = {
-      "không": "khong",
-      "khong": "khong",
-      "tôi": "toi",
-      "toi": "toi",
-      "bạn": "ban",
-      "ban": "ban",
+      không: "khong",
+      khong: "khong",
+      tôi: "toi",
+      toi: "toi",
+      bạn: "ban",
+      ban: "ban",
       "cảm ơn": "cam_on",
-      "cam_on": "cam_on",
+      cam_on: "cam_on",
       "xin lỗi": "xin_loi",
-      "xin_loi": "xin_loi",
+      xin_loi: "xin_loi",
       "giúp đỡ": "giup_do",
-      "giup_do": "giup_do",
+      giup_do: "giup_do",
       "vui vẻ": "vui_ve",
-      "vui_ve": "vui_ve",
+      vui_ve: "vui_ve",
       "hẹn gặp lại": "hen_gap_lai",
-      "hen_gap_lai": "hen_gap_lai",
+      hen_gap_lai: "hen_gap_lai",
       "tạm biệt": "tam_biet",
-      "tam_biet": "tam_biet",
+      tam_biet: "tam_biet",
       "đồng ý": "dong_y",
-      "dong_y": "dong_y",
+      dong_y: "dong_y",
       "khỏe mạnh": "khoe_manh",
-      "khoe_manh": "khoe_manh",
-      "đừng": "dung",
-      "dung": "dung",
-      "a": "a", "b": "b", "c": "c", "d": "d", "e": "e", "g": "g", "h": "h",
-      "i": "i", "k": "k", "l": "l", "m": "m", "n": "n", "o": "o", "p": "p",
-      "q": "q", "r": "r", "s": "s", "t": "t", "u": "u", "v": "v", "x": "x", "y": "y",
-      "xin chào": "xin_chao", "xin_chao": "xin_chao", "chào": "xin_chao", "chao": "xin_chao"
+      khoe_manh: "khoe_manh",
+      đừng: "dung",
+      dung: "dung",
+      a: "a",
+      b: "b",
+      c: "c",
+      d: "d",
+      e: "e",
+      g: "g",
+      h: "h",
+      i: "i",
+      k: "k",
+      l: "l",
+      m: "m",
+      n: "n",
+      o: "o",
+      p: "p",
+      q: "q",
+      r: "r",
+      s: "s",
+      t: "t",
+      u: "u",
+      v: "v",
+      x: "x",
+      y: "y",
+      "xin chào": "xin_chao",
+      xin_chao: "xin_chao",
+      chào: "xin_chao",
+      chao: "xin_chao",
+      // Custom words with generated gTTS audio files:
+      "tên là": "ten_la",
+      ten_la: "ten_la",
+      "học sinh": "hoc_sinh",
+      hoc_sinh: "hoc_sinh",
+      "gia đình": "gia_dinh",
+      gia_dinh: "gia_dinh",
+      "bạn bè": "ban_be",
+      ban_be: "ban_be",
+      "yêu thương": "yeu_thuong",
+      yeu_thuong: "yeu_thuong",
+      "nhà trường": "nha_truong",
+      nha_truong: "nha_truong",
+      "thầy giáo": "thay_giao",
+      thay_giao: "thay_giao",
+      "cô giáo": "co_giao",
+      co_giao: "co_giao",
+      "trẻ em": "tre_em",
+      tre_em: "tre_em",
+      "người lớn": "nguoi_lon",
+      nguoi_lon: "nguoi_lon",
     };
 
     // Preloaded HTML5 Audio Memory Cache (0ms latency playback)
     this.preloadedAudioMap = {};
-    this.audioQueue = []; // Sequential Speech Queue
+    this.audioQueue = [];
     this.isProcessingQueue = false;
+
+    // Custom words registered dynamically by user (word text -> display text)
+    // These will be spoken via Web Speech API (vi-VN only)
+    this.customWordSet = new Set();
+
+    // Auto-register custom words from localStorage into slugMap at boot
+    // This allows any word added via gesture_collector to be auto-mapped
+    this._autoRegisterFromLocalStorage();
 
     this.lastSpokenText = "";
     this.lastSpokenTime = 0;
     this.activePlayingAudio = null;
 
-    // Preload all VSL dictionary audio files into RAM immediately on boot
-    this.preloadAllDictionaryAudio();
-  }
+    // Cache resolved Vietnamese voice
+    this._viVoice = null;
+    this._voicesLoaded = false;
 
-  /**
-   * Preload all .wav and .mp3 native Vietnamese audio files into RAM cache
-   */
-  preloadAllDictionaryAudio() {
-    const uniqueSlugs = Array.from(new Set(Object.values(this.slugMap)));
-    uniqueSlugs.forEach(slug => {
-      try {
-        const audioWav = new Audio(`assets/media/audio/${slug}.wav`);
-        audioWav.preload = "auto";
-        this.preloadedAudioMap[slug] = audioWav;
-      } catch (e) {
-        console.warn(`[TTS Preload Warning]: Cannot preload ${slug}.wav:`, e);
+    // Preload all dictionary audio files into RAM immediately on boot
+    this._preloadAll();
+
+    // Load existing custom words from localStorage
+    this._loadCustomWordsFromStorage();
+
+    // Pre-resolve Vietnamese voice when voices become available
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = () => this._resolveViVoice();
       }
-    });
-    console.log(`[TTSService] Đã preload thành công ${uniqueSlugs.length} file .wav giọng Việt thật vào bộ nhớ RAM.`);
+      setTimeout(() => this._resolveViVoice(), 500);
+    }
   }
 
   /**
-   * Enqueue word for sequential playback (Realtime Queue, No Word Cutting)
-   * @param {String} text Gesture word or ID (e.g. "Tôi", "H", "Xin chào")
+   * Preload all known .wav audio files into RAM cache for instant playback
    */
-  async speak(text) {
-    if (!text || text.trim() === '') return;
+  _preloadAll() {
+    const uniqueSlugs = Array.from(new Set(Object.values(this.slugMap)));
+    uniqueSlugs.forEach((slug) => {
+      try {
+        const audio = new Audio(`assets/media/audio/${slug}.wav`);
+        audio.preload = "auto";
+        this.preloadedAudioMap[slug] = audio;
+      } catch (_e) {}
+    });
+    console.log(
+      `[TTSService] Preloaded ${uniqueSlugs.length} Vietnamese .wav files into RAM.`,
+    );
+  }
 
-    // Clean text string
-    const cleanText = text.replace(/\[.*?\]/g, '').replace(/:\s*/g, '').trim();
+  /**
+   * Auto-register custom words from localStorage into slugMap on boot.
+   * Words added via gesture_collector get a slug like "ten_la" -> audio/ten_la.wav
+   */
+  _autoRegisterFromLocalStorage() {
+    try {
+      const saved = localStorage.getItem("vsl_custom_words");
+      if (!saved) return;
+      const words = JSON.parse(saved);
+      words.forEach((w) => {
+        if (!w || !w.word || !w.id) return;
+        const lowerWord = w.word.toLowerCase();
+        const slug = w.id; // e.g. "ten_la"
+        // Register both display text and slug -> same audio slug
+        if (!this.slugMap[lowerWord]) {
+          this.slugMap[lowerWord] = slug;
+        }
+        if (!this.slugMap[slug]) {
+          this.slugMap[slug] = slug;
+        }
+        // Preload the audio file if not already cached
+        if (!this.preloadedAudioMap[slug]) {
+          try {
+            const audio = new Audio(`assets/media/audio/${slug}.wav`);
+            audio.preload = "auto";
+            this.preloadedAudioMap[slug] = audio;
+          } catch (_e) {}
+        }
+      });
+      console.log(
+        `[TTSService] Auto-registered ${words.length} custom words from localStorage into slugMap.`,
+      );
+    } catch (e) {
+      console.warn("[TTSService] _autoRegisterFromLocalStorage error:", e);
+    }
+  }
+
+  /**
+   * Load previously registered custom words from localStorage
+   */
+  _loadCustomWordsFromStorage() {
+    try {
+      const saved = localStorage.getItem("vsl_custom_words");
+      if (saved) {
+        const words = JSON.parse(saved);
+        words.forEach((w) => {
+          if (w && w.word) this.customWordSet.add(w.word.toLowerCase());
+          if (w && w.id) this.customWordSet.add(w.id.toLowerCase());
+        });
+        if (this.customWordSet.size > 0) {
+          console.log(
+            `[TTSService] Loaded ${this.customWordSet.size} custom words for vi-VN synthesis.`,
+          );
+        }
+      }
+    } catch (_e) {}
+  }
+
+  /**
+   * Resolve and cache the best available Vietnamese voice on this system
+   */
+  _resolveViVoice() {
+    if (!("speechSynthesis" in window)) return;
+    const voices = window.speechSynthesis.getVoices();
+    this._viVoice =
+      voices.find(
+        (v) =>
+          (v.lang && v.lang.toLowerCase().replace("_", "-").startsWith("vi")) ||
+          (v.name &&
+            (v.name.toLowerCase().includes("vietnam") ||
+              v.name.toLowerCase().includes("tiếng việt") ||
+              v.name.toLowerCase().includes("vietnamese"))),
+      ) || null;
+    this._voicesLoaded = true;
+    if (this._viVoice) {
+      console.log(
+        `[TTSService] Đã tìm thấy voice tiếng Việt: "${this._viVoice.name}" (${this._viVoice.lang})`,
+      );
+    } else {
+      console.warn(
+        "[TTSService] Không tìm thấy voice tiếng Việt trên hệ thống. Custom words sẽ không được đọc.",
+      );
+    }
+  }
+
+  /**
+   * Register a new custom word for Vietnamese TTS synthesis.
+   * Call this when user adds a new word in gesture_collector.
+   * @param {string} wordText
+   * @param {string} [slug]
+   */
+  registerCustomWord(wordText, slug) {
+    if (!wordText) return;
+    const lowerWord = wordText.toLowerCase();
+    this.customWordSet.add(lowerWord);
+    if (slug) this.customWordSet.add(slug.toLowerCase());
+    console.log(`[TTSService] Đã đăng ký từ mới cho vi-VN TTS: "${wordText}"`);
+
+    // Persist to localStorage so it survives page reload
+    this._saveCustomWordsToStorage(wordText, slug);
+  }
+
+  /**
+   * @private Save a custom word key to localStorage (merged into vsl_custom_words)
+   */
+  _saveCustomWordsToStorage(wordText, slug) {
+    try {
+      const saved = localStorage.getItem("vsl_custom_words");
+      const words = saved ? JSON.parse(saved) : [];
+      const exists = words.some(
+        (w) =>
+          (w.word && w.word.toLowerCase() === wordText.toLowerCase()) ||
+          (slug && w.id && w.id === slug),
+      );
+      if (!exists) {
+        words.push({
+          id: slug || wordText.toLowerCase().replace(/\s+/g, "_"),
+          word: wordText,
+          category: "Custom",
+        });
+        localStorage.setItem("vsl_custom_words", JSON.stringify(words));
+      }
+    } catch (_e) {}
+  }
+
+  /**
+   * @param {string} text - A single gesture word or token
+   */
+  speak(text) {
+    if (!text || typeof text !== "string") return;
+
+    // Strip emoji/label prefixes if accidentally passed full subtitle
+    const cleanText = text
+      .replace(/^\[.*?\]\s*:\s*/, "")
+      .replace(/^[🤟🎙️]+\s*/, "")
+      .trim();
     if (!cleanText) return;
 
     const lowerText = cleanText.toLowerCase();
 
-    // Debounce identical text if recently queued within 600ms for continuous streams
+    // Debounce: skip if same word spoken within 500ms
     const now = Date.now();
-    if (lowerText === this.lastSpokenText && (now - this.lastSpokenTime) < 600) {
+    if (lowerText === this.lastSpokenText && now - this.lastSpokenTime < 500) {
       return;
     }
     this.lastSpokenText = lowerText;
     this.lastSpokenTime = now;
 
-    // Push into Sequential Speech Queue
-    this.audioQueue.push({ text: cleanText, lowerText: lowerText });
+    const slug = this.slugMap[lowerText];
 
-    // Process queue sequentially
-    this.processQueue();
+    if (slug) {
+      // Known dictionary word -> enqueue WAV playback
+      this.audioQueue.push({ type: "wav", slug, label: cleanText });
+    } else if (this.customWordSet.has(lowerText)) {
+      // Custom user-defined word -> enqueue vi-VN synthesis
+      this.audioQueue.push({ type: "synthesis", label: cleanText });
+    } else {
+      // Unknown word, not registered -> skip silently (no English voice)
+      console.log(`[TTSService] Từ "${cleanText}" chưa được đăng ký - bỏ qua.`);
+      return;
+    }
+
+    this._processQueue();
   }
 
   /**
-   * Sequential Queue Worker Loop
-   * Ensures previous word finishes completely before starting next word
+   * Sequential Queue Worker - plays one item at a time, waits for completion
    */
-  async processQueue() {
-    if (this.isProcessingQueue || this.audioQueue.length === 0) {
-      return;
-    }
+  async _processQueue() {
+    if (this.isProcessingQueue || this.audioQueue.length === 0) return;
 
     this.isProcessingQueue = true;
     const item = this.audioQueue.shift();
 
     try {
-      await this.playAudioPromise(item);
-    } catch (err) {
-      console.warn("[TTS Queue Error]:", err);
+      if (item.type === "wav") {
+        await this._playWav(item.slug);
+      } else if (item.type === "synthesis") {
+        await this._speakVietnamese(item.label);
+      }
+    } catch (_err) {
+      // Fail silently
     } finally {
       this.isProcessingQueue = false;
-      // Immediately trigger next word in queue after current word finishes!
       if (this.audioQueue.length > 0) {
-        setTimeout(() => this.processQueue(), 80);
+        setTimeout(() => this._processQueue(), 60);
       }
     }
   }
 
   /**
-   * Plays a single word audio and returns a Promise that resolves ONLY when audio ends
+   * Play a preloaded .wav file from RAM cache
+   * @param {string} slug - The audio file slug (e.g. "toi", "xin_chao")
    */
-  playAudioPromise(item) {
+  _playWav(slug) {
     return new Promise((resolve) => {
-      let targetSlug = this.slugMap[item.lowerText];
-      if (!targetSlug) {
-        targetSlug = item.lowerText.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a")
-          .replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e")
-          .replace(/ì|í|ị|ỉ|ĩ/g, "i")
-          .replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o")
-          .replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u")
-          .replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y")
-          .replace(/đ/g, "d")
-          .replace(/\s+/g, "_")
-          .replace(/[^a-z0-9_]/g, "");
+      const audioObj = this.preloadedAudioMap[slug];
+      if (!audioObj) {
+        resolve();
+        return;
       }
 
-      let hasResolved = false;
+      let resolved = false;
       const finish = () => {
-        if (!hasResolved) {
-          hasResolved = true;
+        if (!resolved) {
+          resolved = true;
           this.activePlayingAudio = null;
           resolve();
         }
       };
 
-      // 1. Try playing preloaded or local .wav audio file
-      let audioObj = null;
-      if (targetSlug && this.preloadedAudioMap[targetSlug]) {
-        audioObj = this.preloadedAudioMap[targetSlug];
-      } else if (targetSlug) {
-        audioObj = new Audio(`assets/media/audio/${targetSlug}.wav`);
-        this.preloadedAudioMap[targetSlug] = audioObj;
-      }
+      audioObj.onended = finish;
+      audioObj.onerror = finish;
+      setTimeout(finish, 2500);
 
-      if (audioObj) {
-        audioObj.onended = finish;
-        audioObj.onerror = () => {
-          // If local audio file missing, fallback to SpeechSynthesis for custom text
-          this.speakSpeechSynthesisFallback(item.text, finish);
-        };
-
-        setTimeout(finish, 2800); // Safety timeout
-
-        try {
-          audioObj.currentTime = 0;
-          this.activePlayingAudio = audioObj;
-          const p = audioObj.play();
-          if (p !== undefined) {
-            p.catch(e => {
-              this.speakSpeechSynthesisFallback(item.text, finish);
-            });
-          }
-        } catch (e) {
-          this.speakSpeechSynthesisFallback(item.text, finish);
-        }
-      } else {
-        this.speakSpeechSynthesisFallback(item.text, finish);
+      try {
+        audioObj.currentTime = 0;
+        this.activePlayingAudio = audioObj;
+        const p = audioObj.play();
+        if (p !== undefined) p.catch(finish);
+      } catch (_e) {
+        finish();
       }
     });
   }
 
   /**
-   * Fallback speech synthesis for new custom words/letters without static .wav files
-   * Guarantees 100% native Vietnamese audio stream (same engine as "Xin chào") and blocks foreign English voices.
+   * Speak a custom word using Web Speech API with STRICT Vietnamese-only voice.
+   * If no Vietnamese voice found -> skip silently (NO English voice fallback).
+   * @param {string} text - The display word to speak (e.g. "tên là")
    */
-  speakSpeechSynthesisFallback(text, onDone) {
-    const slug = text.toLowerCase()
-      .replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a")
-      .replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e")
-      .replace(/ì|í|ị|ỉ|ĩ/g, "i")
-      .replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o")
-      .replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u")
-      .replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y")
-      .replace(/đ/g, "d")
-      .replace(/\s+/g, "_")
-      .replace(/[^a-z0-9_]/g, "");
+  _speakVietnamese(text) {
+    return new Promise((resolve) => {
+      if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+        resolve();
+        return;
+      }
 
-    // 1. Try dynamic Vietnamese server TTS audio stream first (Matches "Xin chào" voice 100%)
-    const dynamicAudio = new Audio(`api/generate_audio.php?word=${encodeURIComponent(text)}&slug=${encodeURIComponent(slug)}`);
-    dynamicAudio.onended = () => { if (onDone) onDone(); };
-    dynamicAudio.onerror = () => {
-      // 2. Strict SpeechSynthesis fallback with vi-VN filtering only
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        try {
-          window.speechSynthesis.cancel();
-          const utterance = new SpeechSynthesisUtterance(text);
-          utterance.lang = 'vi-VN';
-          utterance.rate = 0.95;
+      // Ensure voices are resolved
+      if (!this._voicesLoaded) this._resolveViVoice();
 
-          const voices = window.speechSynthesis.getVoices();
-          const viVoice = voices.find(v => v.lang.toLowerCase().includes('vi')) || null;
-          if (viVoice) {
-            utterance.voice = viVoice;
-            utterance.onend = () => { if (onDone) onDone(); };
-            utterance.onerror = () => { if (onDone) onDone(); };
-            setTimeout(() => { if (onDone) onDone(); }, 2500);
-            window.speechSynthesis.speak(utterance);
-            return;
-          }
-        } catch (e) {
-          // ignore
+      // STRICT GATE: if no Vietnamese voice -> skip silently
+      if (!this._viVoice) {
+        console.warn(
+          `[TTSService] Không có voice vi-VN - bỏ qua từ "${text}".`,
+        );
+        resolve();
+        return;
+      }
+
+      let resolved = false;
+      const finish = () => {
+        if (!resolved) {
+          resolved = true;
+          resolve();
         }
-      }
-      if (onDone) onDone();
-    };
+      };
 
-    setTimeout(() => { if (onDone) onDone(); }, 2800);
-
-    try {
-      this.activePlayingAudio = dynamicAudio;
-      const p = dynamicAudio.play();
-      if (p !== undefined) {
-        p.catch(() => {
-          dynamicAudio.onerror();
-        });
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "vi-VN";
+        utterance.voice = this._viVoice;
+        utterance.rate = 0.92;
+        utterance.pitch = 1.0;
+        utterance.onend = finish;
+        utterance.onerror = finish;
+        setTimeout(finish, 4000); // Safety timeout for long phrases
+        window.speechSynthesis.speak(utterance);
+      } catch (e) {
+        console.warn("[TTSService] Speech synthesis error:", e);
+        finish();
       }
-    } catch (e) {
-      dynamicAudio.onerror();
-    }
+    });
   }
 
+  /**
+   * Stop all audio immediately and clear the queue
+   */
   stop() {
     this.audioQueue = [];
     if (this.activePlayingAudio) {
-      this.activePlayingAudio.pause();
-      this.activePlayingAudio.currentTime = 0;
+      try {
+        this.activePlayingAudio.pause();
+        this.activePlayingAudio.currentTime = 0;
+      } catch (_e) {}
       this.activePlayingAudio = null;
     }
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (_e) {}
     }
   }
 }
