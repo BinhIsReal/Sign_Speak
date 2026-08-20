@@ -1,9 +1,9 @@
 /**
  * Vercel Serverless API Route: /api/ice-servers
  * Returns dynamic TURN credentials from Metered.ca.
- * Credentials are stored in Vercel environment variables, never exposed client-side.
+ * Falls back to Open Relay Project (free, always-available TURN) if Metered is not configured.
  *
- * Required Vercel Env Vars:
+ * Required Vercel Env Vars (optional — fallback is used if not set):
  *   METERED_API_KEY   - Your Metered.ca API key
  *   METERED_APP_NAME  - Your Metered.ca app name (e.g. "sign-speak")
  */
@@ -19,44 +19,48 @@ export default async function handler(req, res) {
   const apiKey = process.env.METERED_API_KEY;
   const appName = process.env.METERED_APP_NAME;
 
-  // Fallback config with real active Metered.ca TURN credentials
-  const fallbackConfig = {
+  /**
+   * Open Relay Project — completely free TURN server, no signup needed.
+   * Credentials: openrelayproject / openrelayproject
+   * Suitable for production apps with moderate usage.
+   */
+  const openRelayFallback = {
     iceServers: [
       {
         urls: [
-          'stun:stun.relay.metered.ca:80',
           'stun:stun.l.google.com:19302',
           'stun:stun1.l.google.com:19302',
           'stun:stun2.l.google.com:19302',
           'stun:stun.cloudflare.com:3478',
+          'stun:openrelay.metered.ca:80',
         ]
       },
       {
-        urls: 'turn:global.relay.metered.ca:80',
-        username: '19a41198dfa472d07e664267',
-        credential: '2Dl+anP4+2pT5LBN'
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
       },
       {
-        urls: 'turn:global.relay.metered.ca:80?transport=tcp',
-        username: '19a41198dfa472d07e664267',
-        credential: '2Dl+anP4+2pT5LBN'
+        urls: 'turn:openrelay.metered.ca:80?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
       },
       {
-        urls: 'turn:global.relay.metered.ca:443',
-        username: '19a41198dfa472d07e664267',
-        credential: '2Dl+anP4+2pT5LBN'
+        urls: 'turn:openrelay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
       },
       {
-        urls: 'turns:global.relay.metered.ca:443?transport=tcp',
-        username: '19a41198dfa472d07e664267',
-        credential: '2Dl+anP4+2pT5LBN'
+        urls: 'turns:openrelay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
       }
     ]
   };
 
   if (!apiKey || !appName) {
-    console.warn('[ice-servers] METERED_API_KEY or METERED_APP_NAME not set. Returning STUN-only fallback.');
-    return res.status(200).json(fallbackConfig);
+    console.log('[ice-servers] METERED env vars not set — returning Open Relay fallback.');
+    return res.status(200).json(openRelayFallback);
   }
 
   try {
@@ -78,6 +82,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('[ice-servers] Failed to fetch from Metered.ca:', error.message);
-    return res.status(200).json(fallbackConfig);
+    return res.status(200).json(openRelayFallback);
   }
 }
