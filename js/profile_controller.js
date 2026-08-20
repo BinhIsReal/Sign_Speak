@@ -5,8 +5,8 @@
 document.addEventListener("DOMContentLoaded", async () => {
   const profileForm = document.getElementById("profileForm");
   const logoutBtn = document.getElementById("logoutBtn");
+  const userAvatarWrapper = document.getElementById("userAvatarWrapper");
   const userAvatarInitial = document.getElementById("userAvatarInitial");
-  const changeAvatarBtn = document.getElementById("changeAvatarBtn");
   const avatarFileInput = document.getElementById("avatarFileInput");
   const profileDisplayName = document.getElementById("profileDisplayName");
   const profileUsernameDisplay = document.getElementById(
@@ -139,8 +139,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Live Avatar Image Selection & Compression Handler
-  if (changeAvatarBtn && avatarFileInput) {
-    changeAvatarBtn.addEventListener("click", () => {
+  const avatarClickTarget = userAvatarWrapper || userAvatarInitial;
+  if (avatarClickTarget && avatarFileInput) {
+    avatarClickTarget.addEventListener("click", () => {
       avatarFileInput.click();
     });
   }

@@ -98,14 +98,14 @@
         };
       } catch (_e) {}
     </script>
-    <link rel="stylesheet" href="css/style.css?v=2.5.0" />
-    <script src="js/services/security_guard.js?v=2.5.0"></script>
-    <script src="js/sidebar_component.js?v=2.5.0"></script>
+    <link rel="stylesheet" href="css/style.css?v=2.7.0" />
+    <script src="js/services/security_guard.js?v=2.7.0"></script>
+    <script src="js/sidebar_component.js?v=2.7.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/services/supabase_client.js?v=2.5.0"></script>
-    <script src="js/services/push_notification_service.js?v=2.5.0"></script>
-    <script src="js/services/global_call_listener.js?v=2.5.0"></script>
-    <script src="js/profile_controller.js?v=2.5.0"></script>
+    <script src="js/services/supabase_client.js?v=2.7.0"></script>
+    <script src="js/services/push_notification_service.js?v=2.7.0"></script>
+    <script src="js/services/global_call_listener.js?v=2.7.0"></script>
+    <script src="js/profile_controller.js?v=2.7.0"></script>
   </head>
   <body
     class="flex min-h-screen overflow-hidden bg-background text-on-background antialiased"
@@ -151,29 +151,38 @@
             >
               <div class="relative group shrink-0">
                 <div
-                  id="userAvatarInitial"
-                  class="w-24 h-24 min-w-[96px] min-h-[96px] max-w-[96px] max-h-[96px] rounded-full bg-white text-primary font-extrabold text-3xl flex items-center justify-center shadow-lg border-4 border-white/30 overflow-hidden relative shrink-0 aspect-square"
+                  id="userAvatarWrapper"
+                  class="w-24 h-24 min-w-[96px] min-h-[96px] max-w-[96px] max-h-[96px] rounded-full bg-white text-primary font-extrabold text-3xl flex items-center justify-center shadow-lg border-4 border-white/30 overflow-hidden relative shrink-0 aspect-square cursor-pointer transition-all duration-200 hover:scale-105 hover:border-white/60 active:scale-95"
+                  title="Nhấp để thay đổi ảnh đại diện"
                 >
-                  NA
-                </div>
-                <button
-                  id="changeAvatarBtn"
-                  type="button"
-                  class="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white text-primary shadow-md flex items-center justify-center hover:bg-slate-100 hover:scale-110 active:scale-95 transition-all cursor-pointer border border-slate-200 z-10"
-                  title="Thay đổi ảnh đại diện"
-                >
-                  <span class="material-symbols-outlined text-[18px]"
-                    >photo_camera</span
+                  <div
+                    id="userAvatarInitial"
+                    class="w-full h-full flex items-center justify-center font-extrabold text-3xl text-primary select-none"
                   >
-                </button>
+                    NA
+                  </div>
+                  <!-- Hover/Click Overlay with Camera Icon & Label -->
+                  <div
+                    id="changeAvatarOverlay"
+                    class="absolute inset-0 bg-slate-900/60 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur-[1px] select-none pointer-events-none"
+                  >
+                    <span class="material-symbols-outlined text-2xl drop-shadow-md">photo_camera</span>
+                    <span class="text-[10px] font-bold tracking-tight drop-shadow-md mt-0.5">Đổi ảnh</span>
+                  </div>
+                </div>
+
                 <input
                   type="file"
                   id="avatarFileInput"
                   accept="image/*"
                   class="hidden"
                 />
+
+                <!-- Online Status Dot (independent at bottom right) -->
                 <span
-                  class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-emerald-400 border-2 border-white z-20 pointer-events-none"
+                  id="profileOnlineStatusDot"
+                  class="absolute bottom-0.5 right-0.5 w-5 h-5 rounded-full bg-emerald-400 border-[2.5px] border-white shadow-md z-20 pointer-events-none"
+                  title="Trạng thái trực tuyến"
                 ></span>
               </div>
               <div
