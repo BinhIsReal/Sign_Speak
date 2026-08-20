@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "conversationsCountBadge",
   );
   const activeChatAvatar = document.getElementById("activeChatAvatar");
+  const activeChatStatusDot = document.getElementById("activeChatStatusDot");
   const activeChatName = document.getElementById("activeChatName");
   const activeChatSub = document.getElementById("activeChatSub");
   const activeVideoCallLink = document.getElementById("activeVideoCallLink");
@@ -121,6 +122,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         partner.display_name || "Người dùng",
       );
     const isPartnerOnline = window.supabaseService.isUserOnline(partner.id);
+    if (activeChatStatusDot) {
+      activeChatStatusDot.className = `absolute bottom-0 right-0 w-3 h-3 rounded-full ${isPartnerOnline ? "bg-emerald-500" : "bg-slate-400"} border-2 border-white dark:border-[#151e32] shadow-sm`;
+    }
     if (activeChatSub) {
       activeChatSub.innerHTML = `
         <span class="w-1.5 h-1.5 rounded-full ${isPartnerOnline ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}"></span>
@@ -519,6 +523,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       const cloudHistory = await window.supabaseService.getChatHistoryAsync(activeRoomId);
       if (cloudHistory && cloudHistory.length > 0) {
         cloudHistory.forEach(m => appendMessageToUI(m));
+      }
+      if (activeChatStatusDot && window.supabaseService) {
+        const isOnline = window.supabaseService.isUserOnline(activePartner.id);
+        activeChatStatusDot.className = `absolute bottom-0 right-0 w-3 h-3 rounded-full ${isOnline ? "bg-emerald-500" : "bg-slate-400"} border-2 border-white dark:border-[#151e32] shadow-sm`;
       }
     }
   }, 3000);
