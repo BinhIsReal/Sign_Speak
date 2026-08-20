@@ -37,12 +37,6 @@ function renderAppSidebar() {
       icon: "settings",
       active: isSettingsActive,
     },
-    {
-      name: "Tài khoản",
-      href: "profile.html",
-      icon: "account_circle",
-      active: isProfileActive,
-    },
   ];
 
   const mainLinksHtml = navItems
@@ -105,7 +99,7 @@ function renderAppSidebar() {
         </a>
 
         <!-- User Profile Link at Bottom -->
-        <a id="sidebarProfileLink" href="profile.html" class="mt-2 flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+        <a id="sidebarProfileLink" href="profile.html" class="mt-2 flex items-center gap-3 px-3 py-2.5 rounded-2xl ${isProfileActive ? 'bg-primary/10 border-primary/30 shadow-sm' : 'hover:bg-slate-100/80 dark:hover:bg-slate-800 border-transparent hover:border-slate-200 dark:hover:border-slate-700'} transition-all border">
           <div id="sidebarUserAvatar" class="w-10 h-10 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center shrink-0 border border-primary/20 text-sm">
             --
           </div>
