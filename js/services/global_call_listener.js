@@ -4,9 +4,17 @@
  * Features persistent Ringing Heartbeat reception, deduplication, and immediate Cancel/Dismiss handling.
  */
 
+function isCallScreen() {
+  const p = (window.location.pathname || '').toLowerCase();
+  return p.endsWith('/call') || p.endsWith('/call.html') || p.includes('call.html') || p.includes('/call');
+}
+
 let activeIncomingCallSession = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // If user is on the call page, call_controller.js manages all call lifecycle.
+  if (isCallScreen()) return;
+
   // Delay slightly to ensure Supabase Service initializes
   setTimeout(async () => {
     if (!window.supabaseService) return;
@@ -47,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 4. Background Sync Poller (Paused during active video call or hidden tab to prioritize WebRTC bandwidth)
     setInterval(async () => {
-      if (document.visibilityState === 'visible' && !window.location.pathname.includes('call.html')) {
+      if (document.visibilityState === 'visible' && !isCallScreen()) {
         await window.supabaseService.syncUnreadCloudMessagesToLocal(currentUser.id);
         window.supabaseService.updateSidebarBadges();
       }
@@ -74,8 +82,8 @@ function handleIncomingCallSignal(callPayload) {
     return;
   }
 
-  // 2. If user is currently in active call.html with this room, ignore
-  if (window.location.pathname.includes('call.html')) {
+  // 2. If user is currently in active call screen, ignore
+  if (isCallScreen()) {
     return;
   }
 
@@ -210,8 +218,20 @@ function showIncomingCallModal(callData) {
   };
 
   if (acceptBtn) {
-    acceptBtn.addEventListener('click', () => {
+    acceptBtn.addEventListener('click', async () => {
       dismissActiveCallSession();
+      // Send immediate call_accepted notification so caller stops ringing heartbeat at once
+      try {
+        const currentUser = await window.supabaseService.getCurrentUser();
+        const myUserId = currentUser ? currentUser.id : '';
+        if (callerId && window.supabaseService) {
+          window.supabaseService.sendCallNotification(callerId, {
+            type: 'call_accepted',
+            roomId: roomId,
+            senderId: myUserId
+          });
+        }
+      } catch (_e) {}
       window.location.href = `call.html?room=${encodeURIComponent(roomId)}&partner=${encodeURIComponent(callerName)}&role=callee`;
     });
   }

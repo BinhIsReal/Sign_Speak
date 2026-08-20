@@ -568,9 +568,15 @@ async function initCall() {
       }
     });
 
-    // Listen for direct call notifications (such as call_declined)
+    // Listen for direct call notifications (such as call_declined, call_accepted)
     window.supabaseService.subscribeCallNotifications(currentUserId, (notif) => {
-      if (notif && (notif.type === 'call_declined' || notif.type === 'call-declined') && notif.roomId === roomId) {
+      if (!notif) return;
+      if (notif.type === 'call_accepted' || notif.type === 'call-accepted') {
+        console.log('[Call Controller] Partner accepted call, stopping ringing heartbeat.');
+        if (window.supabaseService) window.supabaseService.stopCallRingingHeartbeat();
+        return;
+      }
+      if ((notif.type === 'call_declined' || notif.type === 'call-declined') && notif.roomId === roomId) {
         stopCallTimer();
         if (window.supabaseService) window.supabaseService.stopCallRingingHeartbeat();
         webRTCService.endCall();
@@ -1252,11 +1258,13 @@ document.addEventListener('DOMContentLoaded', () => {
           callerId: globalCurrentUserId
         });
       }
-      window.supabaseService.sendSignalingMessage({
-        type: 'call-ended',
-        senderId: globalCurrentUserId,
-        senderName: globalCurrentUserName
-      });
+      if (callSecondsElapsed > 0) {
+        window.supabaseService.sendSignalingMessage({
+          type: 'call-ended',
+          senderId: globalCurrentUserId,
+          senderName: globalCurrentUserName
+        });
+      }
     }
     webRTCService.endCall();
   });

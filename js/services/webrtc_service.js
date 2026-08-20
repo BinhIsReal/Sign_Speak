@@ -441,8 +441,19 @@ class WebRTCService {
             // Reset offer state for reconnect
             this.offerCreated = false;
             this._iceRestartInProgress = false;
+            await this.createCallOffer(currentUserId, true);
+          } else if (this.peerConnection.localDescription && this.peerConnection.localDescription.type === 'offer') {
+            // Callee just joined and Caller already prepared the local offer -> re-send the offer to Callee!
+            console.log('[WebRTC] Callee joined! Re-sending existing local offer to callee...');
+            window.supabaseService.sendSignalingMessage({
+              type: 'offer',
+              offer: this.peerConnection.localDescription,
+              senderId: currentUserId || this.currentUserId
+            });
+          } else {
+            this.offerCreated = false;
+            await this.createCallOffer(currentUserId, true);
           }
-          await this.createCallOffer(currentUserId);
         }
       } else if (signal.type === 'offer') {
         console.log('[WebRTC] Received offer from caller, creating answer...');
@@ -508,10 +519,19 @@ class WebRTCService {
   /**
    * Initiate call offer — called by caller side
    */
-  async createCallOffer(currentUserId = '') {
+  async createCallOffer(currentUserId = '', force = false) {
     if (!this.peerConnection) return;
-    if (this.offerCreated) {
-      console.warn('[WebRTC] createCallOffer skipped — offer already created for this session.');
+    if (this.offerCreated && !force) {
+      if (this.peerConnection.localDescription && this.peerConnection.localDescription.type === 'offer') {
+        console.log('[WebRTC] Re-broadcasting existing local offer...');
+        window.supabaseService.sendSignalingMessage({
+          type: 'offer',
+          offer: this.peerConnection.localDescription,
+          senderId: currentUserId || this.currentUserId
+        });
+      } else {
+        console.warn('[WebRTC] createCallOffer skipped — offer already created for this session.');
+      }
       return;
     }
 
