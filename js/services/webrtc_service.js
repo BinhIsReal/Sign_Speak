@@ -23,29 +23,13 @@ class WebRTCService {
             'stun:stun.l.google.com:19302',
             'stun:stun1.l.google.com:19302',
             'stun:stun2.l.google.com:19302',
+            'stun:stun3.l.google.com:19302',
+            'stun:stun4.l.google.com:19302',
             'stun:stun.cloudflare.com:3478',
-            'stun:stun.relay.metered.ca:80',
+            'stun:stun.services.mozilla.com:3478',
+            'stun:stun.nextcloud.com:443',
+            'stun:global.stun.twilio.com:3478'
           ]
-        },
-        {
-          urls: 'turn:global.relay.metered.ca:80',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: 'turn:global.relay.metered.ca:80?transport=tcp',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: 'turn:global.relay.metered.ca:443',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: 'turns:global.relay.metered.ca:443?transport=tcp',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
         }
       ],
       iceCandidatePoolSize: 10,
@@ -493,8 +477,9 @@ class WebRTCService {
       } else if (signal.type === 'ice-candidate') {
         if (signal.candidate) {
           const candidate = new RTCIceCandidate(signal.candidate);
+          console.log(`[WebRTC ICE Remote Candidate Received]: type=${candidate.type || 'srflx/host'}, protocol=${candidate.protocol || 'udp'}`);
           if (this.peerConnection.remoteDescription && this.peerConnection.remoteDescription.type) {
-            await this.peerConnection.addIceCandidate(candidate);
+            await this.peerConnection.addIceCandidate(candidate).catch(e => console.warn('[WebRTC addIceCandidate warn]:', e.message));
           } else {
             this.iceCandidatesQueue.push(candidate);
           }
