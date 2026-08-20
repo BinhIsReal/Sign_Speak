@@ -980,7 +980,9 @@ class SupabaseService {
     if (!this.client || !myUserId) return null;
 
     if (this.globalCallChannel) {
-      this.client.removeChannel(this.globalCallChannel);
+      try {
+        this.client.removeChannel(this.globalCallChannel);
+      } catch (_e) {}
     }
 
     this.globalCallChannel = this.client.channel(`user_calls_${myUserId}`, {
@@ -993,6 +995,12 @@ class SupabaseService {
       }
     });
 
+    this.globalCallChannel.on('broadcast', { event: 'call_action' }, payload => {
+      if (onIncomingCall && payload.payload) {
+        onIncomingCall(payload.payload);
+      }
+    });
+
     this.globalCallChannel.subscribe(status => {
       console.log(`[Supabase Realtime Call Notif] Subscribed to user_calls_${myUserId} status:`, status);
     });
@@ -1000,22 +1008,134 @@ class SupabaseService {
     return this.globalCallChannel;
   }
 
+  /**
+   * Start persistent ringing heartbeat from Caller to Callee.
+   * Keeps pulsing incoming_call event every 2.5 seconds until stopped or timeout (60s).
+   * Ensures Callee receives notification even if network reconnects, tab wakes up, or was temporarily busy.
+   */
+  startCallRingingHeartbeat(targetUserId, callPayload) {
+    if (!this.client || !targetUserId) return null;
+
+    this.stopCallRingingHeartbeat();
+
+    const channelName = `user_calls_${targetUserId}`;
+    const outgoingChannel = this.client.channel(channelName, {
+      config: { broadcast: { self: false } }
+    });
+
+    let isSubscribed = false;
+    let heartbeatTimer = null;
+    let maxTimeoutTimer = null;
+
+    const pulsePayload = () => {
+      if (!isSubscribed) return;
+      outgoingChannel.send({
+        type: 'broadcast',
+        event: 'incoming_call',
+        payload: {
+          ...callPayload,
+          heartbeat: true,
+          timestamp: Date.now()
+        }
+      }).catch(err => console.warn('[Call Heartbeat Pulse Error]:', err));
+    };
+
+    outgoingChannel.subscribe(status => {
+      console.log(`[Call Ringing Heartbeat] Outgoing channel to ${targetUserId} status:`, status);
+      if (status === 'SUBSCRIBED') {
+        isSubscribed = true;
+        // Pulse immediately
+        pulsePayload();
+        // Continue pulsing every 2.5 seconds
+        if (!heartbeatTimer) {
+          heartbeatTimer = setInterval(pulsePayload, 2500);
+        }
+      }
+    });
+
+    // Automatically stop ringing after 60 seconds (Caller waiting timeout)
+    maxTimeoutTimer = setTimeout(() => {
+      console.log('[Call Ringing Heartbeat] Max ringing duration reached (60s). Stopping heartbeat.');
+      this.stopCallRingingHeartbeat();
+    }, 60000);
+
+    this.activeCallingHeartbeat = {
+      targetUserId,
+      channel: outgoingChannel,
+      heartbeatTimer,
+      maxTimeoutTimer,
+      callPayload,
+      stop: () => this.stopCallRingingHeartbeat()
+    };
+
+    return this.activeCallingHeartbeat;
+  }
+
+  stopCallRingingHeartbeat() {
+    if (this.activeCallingHeartbeat) {
+      if (this.activeCallingHeartbeat.heartbeatTimer) {
+        clearInterval(this.activeCallingHeartbeat.heartbeatTimer);
+      }
+      if (this.activeCallingHeartbeat.maxTimeoutTimer) {
+        clearTimeout(this.activeCallingHeartbeat.maxTimeoutTimer);
+      }
+      if (this.activeCallingHeartbeat.channel) {
+        try {
+          this.client.removeChannel(this.activeCallingHeartbeat.channel);
+        } catch (_e) {}
+      }
+      this.activeCallingHeartbeat = null;
+      console.log('[Call Ringing Heartbeat] Stopped and channel released.');
+    }
+  }
+
+  async sendCallCancelled(targetUserId, callPayload) {
+    if (!this.client || !targetUserId) return;
+    this.stopCallRingingHeartbeat();
+
+    try {
+      const cancelChannel = this.client.channel(`user_calls_${targetUserId}`);
+      await cancelChannel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await cancelChannel.send({
+            type: 'broadcast',
+            event: 'incoming_call',
+            payload: {
+              type: 'call_cancelled',
+              ...callPayload,
+              timestamp: Date.now()
+            }
+          });
+          setTimeout(() => {
+            try { this.client.removeChannel(cancelChannel); } catch (_e) {}
+          }, 1500);
+        }
+      });
+    } catch (e) {
+      console.warn('[sendCallCancelled error]:', e);
+    }
+  }
+
   async sendCallNotification(targetUserId, callPayload) {
     if (!this.client || !targetUserId) return;
 
-    const tempChannel = this.client.channel(`user_calls_${targetUserId}`);
-    await tempChannel.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        await tempChannel.send({
-          type: 'broadcast',
-          event: 'incoming_call',
-          payload: callPayload
-        });
-        setTimeout(() => {
-          this.client.removeChannel(tempChannel);
-        }, 3000);
-      }
-    });
+    try {
+      const tempChannel = this.client.channel(`user_calls_${targetUserId}`);
+      await tempChannel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await tempChannel.send({
+            type: 'broadcast',
+            event: 'incoming_call',
+            payload: callPayload
+          });
+          setTimeout(() => {
+            try { this.client.removeChannel(tempChannel); } catch (_e) {}
+          }, 3000);
+        }
+      });
+    } catch (e) {
+      console.warn('[sendCallNotification error]:', e);
+    }
   }
 
   // --- SIDEBAR BADGES & MESSAGING UTILITIES ---

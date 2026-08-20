@@ -26,6 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
     : (s) => s;
 
   let currentTab = "friends";
+  let currentUserId = "";
 
   async function updatePendingBadges() {
     const count = await window.supabaseService.getPendingRequestsCount();
@@ -139,6 +140,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function loadContacts() {
+    if (!currentUserId && window.supabaseService) {
+      const u = await window.supabaseService.getCurrentUser();
+      if (u) currentUserId = u.id;
+    }
+
     const query = searchInput ? sanitize(searchInput.value) : "";
     const filterToUse = query ? "all" : currentTab;
     const contacts = await window.supabaseService.searchGlobalUsers(
@@ -232,12 +238,17 @@ document.addEventListener("DOMContentLoaded", () => {
         let actionButtons = "";
 
         if (c.friendStatus === "accepted") {
+          const callRoomId = (window.supabaseService && currentUserId)
+            ? window.supabaseService.getCanonicalRoomId(currentUserId, c.id)
+            : `room_${encodeURIComponent(c.id)}`;
+          const callUrl = `call.html?room=${encodeURIComponent(callRoomId)}&partner=${encodeURIComponent(c.display_name)}&role=caller`;
+
           actionButtons = `
           <div class="flex items-center gap-1.5 shrink-0">
             <a href="index.html?chat_with=${encodeURIComponent(c.id)}" class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-primary hover:text-white dark:hover:bg-primary transition-all" title="Nhắn tin với ${escape(c.display_name)}">
               <span class="material-symbols-outlined text-[18px]">chat</span>
             </a>
-            <a href="call.html?room=room_${encodeURIComponent(c.id)}" class="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary-container transition-all shadow-md shadow-primary/20" title="Gọi Video VSL">
+            <a href="${callUrl}" class="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary-container transition-all shadow-md shadow-primary/20" title="Gọi Video VSL">
               <span class="material-symbols-outlined text-[18px]">videocam</span>
             </a>
             <div class="relative">

@@ -16,6 +16,8 @@ let globalCurrentUserId = '';
 let globalCurrentUserName = 'Tôi';
 let globalRoomId = '';
 let globalPartnerParam = '';
+let globalTargetPartnerId = '';
+let globalIsCaller = false;
 let callSecondsElapsed = 0;
 let callTimerInterval = null;
 
@@ -312,6 +314,8 @@ async function initCall() {
 
     globalCurrentUserId = currentUserId;
     globalCurrentUserName = currentUserName;
+    globalTargetPartnerId = targetPartnerId;
+    globalIsCaller = isCaller;
 
     // STEP 1: PARALLEL BACKGROUND DATASET LOAD
     loadClassifierTemplates().catch(e => console.warn("Background load templates warning:", e));
@@ -396,6 +400,7 @@ async function initCall() {
       if (signal.type === 'call-declined' || signal.type === 'call_declined' || signal.type === 'call-rejected') {
         if (signal.senderId !== currentUserId) {
           stopCallTimer();
+          if (window.supabaseService) window.supabaseService.stopCallRingingHeartbeat();
           webRTCService.endCall();
           updateSubtitleDisplay(`⚠️ Đối phương đã từ chối cuộc gọi. Đang quay lại...`, 'Từ chối');
           const statusText = document.getElementById('callStatusText');
@@ -413,10 +418,15 @@ async function initCall() {
       if (signal.type === 'call-ended') {
         if (signal.senderId !== currentUserId) {
           stopCallTimer();
+          if (window.supabaseService) window.supabaseService.stopCallRingingHeartbeat();
           webRTCService.endCall();
           window.location.href = 'index.html';
         }
         return;
+      }
+
+      if (signal.type === 'peer-joined' || signal.type === 'answer') {
+        if (window.supabaseService) window.supabaseService.stopCallRingingHeartbeat();
       }
 
       if (signal.type === 'multimodal-subtitle') {
@@ -519,6 +529,7 @@ async function initCall() {
 
         // Start call duration counter ONLY when peer stream is received and both are connected
         if (remoteStream && remoteStream.getTracks().length > 0) {
+          if (window.supabaseService) window.supabaseService.stopCallRingingHeartbeat();
           const statusText = document.getElementById('callStatusText');
           if (statusText) {
             statusText.className = "text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 shrink-0";
@@ -532,6 +543,7 @@ async function initCall() {
         const statusText = document.getElementById('callStatusText');
         if (statusText) {
           if (state === 'connected') {
+            if (window.supabaseService) window.supabaseService.stopCallRingingHeartbeat();
             statusText.className = "text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 shrink-0";
             statusText.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> <span>Đã kết nối</span>`;
             startCallTimer();
@@ -560,6 +572,7 @@ async function initCall() {
     window.supabaseService.subscribeCallNotifications(currentUserId, (notif) => {
       if (notif && (notif.type === 'call_declined' || notif.type === 'call-declined') && notif.roomId === roomId) {
         stopCallTimer();
+        if (window.supabaseService) window.supabaseService.stopCallRingingHeartbeat();
         webRTCService.endCall();
         updateSubtitleDisplay(`⚠️ Đối phương đã từ chối cuộc gọi. Đang quay lại...`, 'Từ chối');
         const statusText = document.getElementById('callStatusText');
@@ -573,12 +586,14 @@ async function initCall() {
       }
     });
 
-    // If caller, send call notification to partner & create WebRTC offer
+    // If caller, send persistent ringing heartbeat to partner & create WebRTC offer
     if (isCaller) {
-      let targetPartnerId = '';
-      const userIds = roomId.replace('room_', '').split('_');
-      if (userIds.length >= 2) {
-        targetPartnerId = userIds.find(id => id && id !== currentUserId) || '';
+      let targetPartnerId = globalTargetPartnerId;
+      if (!targetPartnerId) {
+        const userIds = roomId.replace('room_', '').split('_');
+        if (userIds.length >= 2) {
+          targetPartnerId = userIds.find(id => id && id !== currentUserId) || '';
+        }
       }
 
       if (!targetPartnerId) {
@@ -587,13 +602,14 @@ async function initCall() {
           const partnerUser = allUsers.find(u => u.id !== currentUserId && (partnerParam ? u.display_name.trim().toLowerCase() === decodeURIComponent(partnerParam).trim().toLowerCase() : true));
           if (partnerUser) {
             targetPartnerId = partnerUser.id;
+            globalTargetPartnerId = targetPartnerId;
           }
         } catch (_e) {}
       }
 
       if (targetPartnerId) {
-        console.log("[Call Init] Sending incoming_call notification to partner:", targetPartnerId);
-        await window.supabaseService.sendCallNotification(targetPartnerId, {
+        console.log("[Call Init] Starting persistent incoming_call ringing heartbeat to partner:", targetPartnerId);
+        window.supabaseService.startCallRingingHeartbeat(targetPartnerId, {
           type: 'incoming_call',
           roomId: roomId,
           callerId: currentUserId,
@@ -1180,6 +1196,16 @@ document.addEventListener('DOMContentLoaded', () => {
       stopCallTimer();
       const finalDuration = formatCallDuration(callSecondsElapsed);
 
+      if (window.supabaseService) {
+        window.supabaseService.stopCallRingingHeartbeat();
+        if (globalIsCaller && callSecondsElapsed === 0 && globalTargetPartnerId) {
+          window.supabaseService.sendCallCancelled(globalTargetPartnerId, {
+            roomId: globalRoomId,
+            callerId: globalCurrentUserId
+          });
+        }
+      }
+
       const now = new Date();
       const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
 
@@ -1219,11 +1245,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.addEventListener('beforeunload', () => {
     stopCallTimer();
-    window.supabaseService.sendSignalingMessage({
-      type: 'call-ended',
-      senderId: globalCurrentUserId,
-      senderName: globalCurrentUserName
-    });
+    if (window.supabaseService) {
+      window.supabaseService.stopCallRingingHeartbeat();
+      if (globalIsCaller && callSecondsElapsed === 0 && globalTargetPartnerId) {
+        window.supabaseService.sendCallCancelled(globalTargetPartnerId, {
+          roomId: globalRoomId,
+          callerId: globalCurrentUserId
+        });
+      }
+      window.supabaseService.sendSignalingMessage({
+        type: 'call-ended',
+        senderId: globalCurrentUserId,
+        senderName: globalCurrentUserName
+      });
+    }
     webRTCService.endCall();
   });
 

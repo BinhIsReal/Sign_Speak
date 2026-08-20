@@ -1,8 +1,10 @@
 /**
  * Global Call Listener Service for Sign_Speak
  * Listens for Realtime Incoming Video Calls across all pages.
- * Displays interactive Incoming Call Modal with Accept & Decline actions.
+ * Features persistent Ringing Heartbeat reception, deduplication, and immediate Cancel/Dismiss handling.
  */
+
+let activeIncomingCallSession = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Delay slightly to ensure Supabase Service initializes
@@ -12,18 +14,110 @@ document.addEventListener('DOMContentLoaded', async () => {
     const currentUser = await window.supabaseService.getCurrentUser();
     if (!currentUser) return;
 
+    // 1. Initial Cloud Message Sync & Sidebar Badges on ALL pages!
+    await window.supabaseService.syncUnreadCloudMessagesToLocal(currentUser.id);
+    window.supabaseService.updateSidebarBadges();
+
+    // Request push notification permission after login (first call listener init)
+    if (window.pushNotificationService) {
+      window.pushNotificationService.requestPermission();
+    }
+
+    // 2. Global Incoming Video Call Notifications with Heartbeat Deduplication
     window.supabaseService.subscribeGlobalCallNotifications(currentUser.id, (callPayload) => {
-      showIncomingCallModal(callPayload);
+      handleIncomingCallSignal(callPayload);
     });
-  }, 1000);
+
+    // 3. Global Incoming Realtime Message Notifications across ALL pages!
+    window.supabaseService.subscribeUserMessageNotifications(currentUser.id, (incomingMsg) => {
+      if (incomingMsg && incomingMsg.sender_id !== currentUser.id) {
+        const all = JSON.parse(localStorage.getItem('chat_messages_db') || '[]');
+        if (!all.some(m => m.id === incomingMsg.id)) {
+          incomingMsg.read = false; // Mark unread for badge
+          all.push(incomingMsg);
+          localStorage.setItem('chat_messages_db', JSON.stringify(all));
+        }
+        window.supabaseService.updateSidebarBadges();
+
+        if (typeof window.loadConversationsListGlobal === 'function') {
+          window.loadConversationsListGlobal();
+        }
+      }
+    });
+
+    // 4. Background Sync Poller (Paused during active video call or hidden tab to prioritize WebRTC bandwidth)
+    setInterval(async () => {
+      if (document.visibilityState === 'visible' && !window.location.pathname.includes('call.html')) {
+        await window.supabaseService.syncUnreadCloudMessagesToLocal(currentUser.id);
+        window.supabaseService.updateSidebarBadges();
+      }
+    }, 5000);
+  }, 500);
 });
 
-function showIncomingCallModal(callData) {
+/**
+ * Handles incoming call payloads from realtime broadcast channels.
+ * Supports Heartbeat deduplication and immediate dismissal on call cancellation.
+ */
+function handleIncomingCallSignal(callPayload) {
+  if (!callPayload) return;
+
+  const type = callPayload.type || 'incoming_call';
+  const roomId = callPayload.roomId || '';
+
+  // 1. If caller cancelled or call ended/declined, dismiss ringing modal immediately
+  if (type === 'call_cancelled' || type === 'call-cancelled' || type === 'call-ended' || type === 'call_declined' || type === 'call-declined') {
+    if (activeIncomingCallSession && (activeIncomingCallSession.roomId === roomId || !roomId)) {
+      console.log('[Global Call Listener] Call cancelled/ended by caller. Dismissing ringing modal.');
+      dismissActiveCallSession();
+    }
+    return;
+  }
+
+  // 2. If user is currently in active call.html with this room, ignore
+  if (window.location.pathname.includes('call.html')) {
+    return;
+  }
+
+  // 3. Heartbeat Deduplication: If already ringing for this roomId, update timestamp without rebuilding modal
+  if (activeIncomingCallSession && activeIncomingCallSession.roomId === roomId) {
+    activeIncomingCallSession.lastHeartbeat = Date.now();
+    return;
+  }
+
+  // 4. New incoming call -> render interactive modal
+  showIncomingCallModal(callPayload);
+}
+
+function dismissActiveCallSession() {
+  if (!activeIncomingCallSession) return;
+
+  if (activeIncomingCallSession.missedCallTimeout) {
+    clearTimeout(activeIncomingCallSession.missedCallTimeout);
+  }
+  if (activeIncomingCallSession.systemNotification) {
+    try {
+      activeIncomingCallSession.systemNotification.close();
+    } catch (_e) {}
+  }
+  if (window.pushNotificationService) {
+    window.pushNotificationService.stopRingtone();
+  }
+
   const existingModal = document.getElementById('globalIncomingCallModal');
-  if (existingModal) existingModal.remove();
+  if (existingModal) {
+    existingModal.remove();
+  }
+
+  activeIncomingCallSession = null;
+}
+
+function showIncomingCallModal(callData) {
+  dismissActiveCallSession();
 
   const callerName = callData.callerName || 'Người dùng Sign Speak';
   const callerAvatar = callData.callerAvatar || 'NA';
+  const callerId = callData.callerId || '';
   const roomId = callData.roomId || 'room_default';
 
   const modalHtml = `
@@ -58,20 +152,117 @@ function showIncomingCallModal(callData) {
 
   document.body.insertAdjacentHTML('beforeend', modalHtml);
 
+  // Play ringtone
+  if (window.pushNotificationService) {
+    window.pushNotificationService.playRingtone();
+  }
+
+  // Show system push notification only when user is in another tab
+  let systemNotification = null;
+  if (document.visibilityState === 'hidden' && window.pushNotificationService) {
+    systemNotification = window.pushNotificationService.showCallNotification(
+      callerName,
+      roomId,
+      () => {
+        const acceptBtnFromNotif = document.getElementById('globalAcceptCallBtn');
+        if (acceptBtnFromNotif) acceptBtnFromNotif.click();
+      }
+    );
+  }
+
   const modal = document.getElementById('globalIncomingCallModal');
   const acceptBtn = document.getElementById('globalAcceptCallBtn');
   const declineBtn = document.getElementById('globalDeclineCallBtn');
 
+  // 60-second unanswered timeout (Missed call)
+  const missedCallTimeout = setTimeout(async () => {
+    dismissActiveCallSession();
+
+    const currentUser = await window.supabaseService.getCurrentUser();
+    const myUserId = currentUser ? currentUser.id : '';
+    const now = new Date();
+    const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+
+    const missedLog = {
+      id: window.supabaseService.generateUUID(),
+      room_id: roomId,
+      sender_id: callerId,
+      recipient_id: myUserId,
+      sender_name: callerName,
+      msg_type: 'call_log',
+      call_status: 'missed',
+      duration: '',
+      text: '📞 Cuộc gọi nhỡ',
+      timestamp: timeStr,
+      read: false
+    };
+
+    window.supabaseService.saveChatMessage(roomId, missedLog);
+  }, 60000);
+
+  activeIncomingCallSession = {
+    roomId,
+    callerId,
+    callerName,
+    missedCallTimeout,
+    systemNotification,
+    lastHeartbeat: Date.now()
+  };
+
   if (acceptBtn) {
     acceptBtn.addEventListener('click', () => {
-      if (modal) modal.remove();
+      dismissActiveCallSession();
       window.location.href = `call.html?room=${encodeURIComponent(roomId)}&partner=${encodeURIComponent(callerName)}&role=callee`;
     });
   }
 
   if (declineBtn) {
-    declineBtn.addEventListener('click', () => {
-      if (modal) modal.remove();
+    declineBtn.addEventListener('click', async () => {
+      dismissActiveCallSession();
+
+      const currentUser = await window.supabaseService.getCurrentUser();
+      const myUserId = currentUser ? currentUser.id : '';
+      const now = new Date();
+      const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+
+      // 1. Broadcast call-declined signal to the room so caller exits immediately
+      try {
+        await window.supabaseService.sendSignalingMessage({
+          type: 'call-declined',
+          roomId: roomId,
+          senderId: myUserId,
+          callerId: callerId,
+          reason: 'declined'
+        });
+      } catch (_e) {}
+
+      // 2. Also send direct notification to caller user ID
+      if (callerId) {
+        try {
+          await window.supabaseService.sendCallNotification(callerId, {
+            type: 'call_declined',
+            roomId: roomId,
+            senderId: myUserId
+          });
+        } catch (_e) {}
+      }
+
+      // 3. Save declined log to chat
+      const declinedLog = {
+        id: window.supabaseService.generateUUID(),
+        room_id: roomId,
+        sender_id: callerId,
+        recipient_id: myUserId,
+        sender_name: callerName,
+        msg_type: 'call_log',
+        call_status: 'declined',
+        duration: '',
+        text: '📞 Cuộc gọi bị từ chối',
+        timestamp: timeStr,
+        read: false
+      };
+
+      window.supabaseService.saveChatMessage(roomId, declinedLog);
     });
   }
 }
