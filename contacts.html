@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="vi" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem("app_theme") === "dark")
+            document.documentElement.classList.add("dark");
+          if (localStorage.getItem("sidebar_collapsed") === "true")
+            document.documentElement.classList.add("sidebar-collapsed-root");
+        } catch (e) {}
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bạn bè | Sign Speak</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      try {
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "on-tertiary": "#ffffff",
+                "surface-container-high": "#e5e8f2",
+                surface: "#f8fafc",
+                "on-primary": "#ffffff",
+                "tertiary-fixed-dim": "#6dd2ff",
+                "on-surface": "#0f172a",
+                primary: "#005bb3",
+                "surface-variant": "#e2e8f0",
+                "on-surface-variant": "#64748b",
+                "on-secondary-container": "#fff6ff",
+                "surface-container-highest": "#e2e8f0",
+                "surface-container": "#f1f5f9",
+                "tertiary-fixed": "#bfe9ff",
+                "surface-container-low": "#f8fafc",
+                outline: "#717786",
+                "inverse-surface": "#2d3038",
+                "inverse-primary": "#a9c7ff",
+                "surface-tint": "#005db7",
+                error: "#ba1a1a",
+                "on-tertiary-fixed": "#001f2a",
+                "error-container": "#ffdad6",
+                tertiary: "#006482",
+                "on-primary-fixed": "#001b3d",
+                "tertiary-container": "#007ea4",
+                secondary: "#8300de",
+                background: "#f8fafc",
+                "on-tertiary-container": "#fbfdff",
+                "surface-container-lowest": "#ffffff",
+                "on-error-container": "#93000a",
+                "primary-container": "#0073df",
+                "secondary-fixed": "#f0dbff",
+                "on-tertiary-fixed-variant": "#004d65",
+                "primary-fixed": "#d6e3ff",
+                "on-primary-fixed-variant": "#00468c",
+                "on-background": "#0f172a",
+                "on-primary-container": "#fefcff",
+                "inverse-on-surface": "#eef0fb",
+                "surface-bright": "#f8fafc",
+                "secondary-fixed-dim": "#ddb7ff",
+                "surface-dim": "#d7dae4",
+                "secondary-container": "#9f32fe",
+                "on-error": "#ffffff",
+                "primary-fixed-dim": "#a9c7ff",
+                "outline-variant": "#c0c6d6",
+                "on-secondary-fixed": "#2c0050",
+                "on-secondary-fixed-variant": "#6900b3",
+                "on-secondary": "#ffffff",
+              },
+              borderRadius: {
+                DEFAULT: "0.25rem",
+                lg: "0.5rem",
+                xl: "1rem",
+                full: "9999px",
+              },
+              fontFamily: {
+                display: ["Outfit", "sans-serif"],
+                body: ["Outfit", "sans-serif"],
+              },
+            },
+          },
+        };
+      } catch (_e) {}
+    </script>
+    <link rel="stylesheet" href="css/style.css?v=2.8.0" />
+    <script src="js/services/security_guard.js?v=2.8.0"></script>
+    <script src="js/sidebar_component.js?v=2.8.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/services/supabase_client.js?v=2.8.0"></script>
+    <script src="js/services/push_notification_service.js?v=2.8.0"></script>
+    <script src="js/services/global_call_listener.js?v=2.8.0"></script>
+    <script src="js/contacts_controller.js?v=2.8.0"></script>
+  </head>
+  <body
+    class="flex min-h-screen overflow-hidden bg-background text-on-background antialiased"
+  >
+    <div class="flex h-screen w-full overflow-hidden">
+      <!-- Left Navigation Sidebar Component -->
+      <div id="sidebarContainer"></div>
+
+      <!-- Main Content Area -->
+      <main
+        class="content-transition ml-64 flex-1 flex flex-col h-screen overflow-hidden bg-slate-50/60 dark:bg-slate-950"
+        id="main-content"
+      >
+        <!-- TopAppBar -->
+        <header
+          class="flex justify-between items-center w-full px-6 sm:px-8 h-16 bg-white dark:bg-[#151e32] border-b border-slate-200/80 dark:border-slate-800 messenger-shadow shrink-0 z-10"
+        >
+          <div class="flex items-center gap-6 flex-1 max-w-xl">
+            <div class="relative w-full">
+              <span
+                class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]"
+                >search</span
+              >
+              <input
+                id="searchInput"
+                class="w-full pl-10 pr-4 py-2.5 min-h-[40px] bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 rounded-full text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-primary/20 focus:bg-white dark:focus:bg-slate-800 transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32]"
+                placeholder="Tìm kiếm bạn bè..."
+                type="text"
+                aria-label="Tìm kiếm bạn bè"
+              />
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <nav
+              class="hidden lg:flex items-center gap-5 mr-2 text-xs font-semibold"
+            >
+              <a
+                id="tabFriendsBtn"
+                class="text-primary font-bold border-b-2 border-primary pb-1 text-xs cursor-pointer flex items-center gap-1 min-h-[36px] px-1 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32] outline-none rounded"
+                href="#"
+                aria-label="Xem danh sách bạn bè"
+              >
+                <span>Bạn bè</span>
+              </a>
+              <a
+                id="tabRequestsBtn"
+                class="text-slate-500 hover:text-primary transition-colors text-xs font-semibold cursor-pointer flex items-center gap-1.5 min-h-[36px] px-1 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32] outline-none rounded"
+                href="#"
+                aria-label="Xem danh sách lời mời kết bạn"
+              >
+                <span>Lời mời kết bạn</span>
+                <span
+                  id="requestsCountBadge"
+                  class="hidden px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[10px]"
+                  >0</span
+                >
+              </a>
+            </nav>
+
+            <!-- Notification Bell Button & Dropdown Container -->
+            <div class="relative">
+              <button
+                id="notifBellBtn"
+                class="relative w-11 h-11 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 transition-all active:scale-95 cursor-pointer shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32] outline-none shrink-0"
+                title="Thông báo lời mời kết bạn"
+                aria-label="Xem thông báo lời mời kết bạn"
+              >
+                <span class="material-symbols-outlined text-[22px]">notifications</span>
+                <span
+                  id="notifBadgeCount"
+                  class="hidden absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white font-bold text-[10px] flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-sm"
+                  >0</span
+                >
+              </button>
+
+              <!-- Notifications Dropdown List (Fixed Width 360px, Glassmorphism, Dark & Light Theme) -->
+              <div
+                id="notifDropdown"
+                class="hidden absolute right-0 mt-2 w-[340px] sm:w-[380px] bg-white dark:bg-[#151e32] rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-2xl z-50 p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200"
+              >
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <h4 class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                      <span class="material-symbols-outlined text-[18px]">notifications</span>
+                    </div>
+                    <span>Thông báo lời mời</span>
+                  </h4>
+                  <span
+                    id="notifDropdownCount"
+                    class="text-[11px] font-bold text-primary dark:text-sky-400 bg-primary/10 dark:bg-sky-400/10 px-2.5 py-0.5 rounded-full"
+                    >0 lời mời mới</span
+                  >
+                </div>
+                <div
+                  id="notifDropdownList"
+                  class="max-h-72 overflow-y-auto space-y-2.5 pr-0.5 custom-scrollbar"
+                >
+                  <!-- Dynamically rendered notification items -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <!-- Contacts Canvas -->
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
+          <div class="max-w-4xl mx-auto space-y-6">
+            
+            <!-- Section 1: Active Now Horizontal Story Strip -->
+            <div>
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 px-1 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Đang hoạt động trực tuyến</span>
+              </h3>
+              <div class="bg-white dark:bg-[#151e32] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+                <div
+                  id="onlineStrip"
+                  class="flex items-center gap-4 overflow-x-auto pb-1 scroll-smooth"
+                >
+                  <!-- Dynamically populated by contacts_controller.js -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 2: All Contacts Flat List -->
+            <div>
+              <div class="flex items-center justify-between mb-2 px-1">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px]">group</span>
+                  <span>Danh sách bạn bè</span>
+                </h3>
+              </div>
+              <div
+                class="bg-white dark:bg-[#151e32] border border-slate-200 dark:border-slate-800 rounded-2xl divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden shadow-2xs"
+                id="contactsGrid"
+              >
+                <!-- Dynamically rendered contacts rows -->
+              </div>
+            </div>
+
+            <!-- Section 3: Suggested Friends -->
+            <div>
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 px-1 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px]">group_add</span>
+                <span>Gợi ý kết bạn</span>
+              </h3>
+              <div
+                class="bg-white dark:bg-[#151e32] border border-slate-200 dark:border-slate-800 rounded-2xl divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden shadow-2xs"
+                id="suggestedGrid"
+              >
+                <!-- Dynamically populated by contacts_controller.js -->
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Notification Toast Banner -->
+    <div
+      id="notifToast"
+      class="hidden fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-white/95 dark:bg-[#151e32]/95 text-slate-900 dark:text-white font-bold text-xs shadow-xl dark:shadow-2xl border border-slate-200/90 dark:border-slate-800 backdrop-blur-md"
+    >
+      🎉 Đã gửi lời mời kết bạn thành công!
+    </div>
+  </body>
+</html>

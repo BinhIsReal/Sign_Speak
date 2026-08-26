@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign_Speak — WebRTC Standalone Test (2-Tab Verification)</title>
+
+  <!-- Google Fonts & Tailwind CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Services & Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/services/supabase_client.js"></script>
+  <script src="js/services/webrtc_service.js"></script>
+
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: radial-gradient(circle at top left, #0f172a, #020617);
+      color: #f8fafc;
+      min-height: 100vh;
+    }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .mirror-mode {
+      transform: scaleX(-1) !important;
+      -webkit-transform: scaleX(-1) !important;
+    }
+  </style>
+</head>
+<body class="p-6">
+  <div class="max-w-6xl mx-auto space-y-6">
+    <!-- Header -->
+    <header class="glass-card rounded-2xl p-6 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-sky-400">WebRTC Realtime Signaling Test (Phase 3)</h1>
+        <p class="text-slate-400 text-sm mt-1">Kiểm tra kết nối Video Call P2P qua Supabase Realtime Broadcast (Dùng cho 2 tab/2 máy)</p>
+      </div>
+
+      <div id="statusBadge" class="px-4 py-2 bg-slate-800 text-slate-300 font-semibold text-xs rounded-full border border-slate-700">
+        Trạng thái: Chưa kết nối
+      </div>
+    </header>
+
+    <!-- Controls -->
+    <div class="glass-card rounded-2xl p-6 space-y-4">
+      <div class="flex flex-wrap items-center gap-4">
+        <div class="flex-1 min-w-[240px]">
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Mã Phòng (Room ID):</label>
+          <input type="text" id="roomIdInput" value="room_demo_vsl" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono focus:outline-none focus:border-sky-500">
+        </div>
+
+        <div class="flex items-end gap-3">
+          <button id="createCallBtn" class="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-semibold rounded-xl text-sm transition-all shadow-lg">
+            📞 Tạo Cuộc Gọi (Caller)
+          </button>
+          <button id="joinCallBtn" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-sm transition-all shadow-lg">
+            📲 Tham Gia (Callee)
+          </button>
+          <button id="hangupBtn" class="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl text-sm transition-all">
+            ❌ Thắt Cuộc Gọi
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Video Windows Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Local Video -->
+      <div class="glass-card rounded-2xl p-4 space-y-2">
+        <h3 class="text-sm font-semibold text-slate-300 flex items-center justify-between">
+          <span>📹 Video Của Bạn (Local Stream)</span>
+          <span class="text-xs text-sky-400">1280x720 30FPS</span>
+        </h3>
+        <video id="localVideo" autoplay playsinline muted class="w-full h-72 bg-slate-950 rounded-xl object-cover border border-slate-800 mirror-mode"></video>
+      </div>
+
+      <!-- Remote Video -->
+      <div class="glass-card rounded-2xl p-4 space-y-2">
+        <h3 class="text-sm font-semibold text-slate-300 flex items-center justify-between">
+          <span>👤 Video Người Nhận (Remote Stream)</span>
+          <span id="remoteCodecLabel" class="text-xs text-slate-500">Đang chờ stream...</span>
+        </h3>
+        <video id="remoteVideo" autoplay playsinline class="w-full h-72 bg-slate-950 rounded-xl object-cover border border-slate-800"></video>
+      </div>
+    </div>
+
+    <!-- Signal Log Console -->
+    <div class="glass-card rounded-2xl p-6 space-y-3">
+      <h3 class="text-sm font-semibold text-sky-400">📜 Nhật Ký Signal Exchange (Supabase Broadcast)</h3>
+      <div id="signalLog" class="h-40 bg-slate-950 rounded-xl p-3 font-mono text-xs text-slate-300 overflow-y-auto space-y-1 border border-slate-800">
+        <div class="text-slate-500">// Hệ thống sẵn sàng. Nhập mã phòng và nhấn "Tạo Cuộc Gọi" trên tab 1 và "Tham Gia" trên tab 2.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const roomIdInput = document.getElementById('roomIdInput');
+    const statusBadge = document.getElementById('statusBadge');
+    const signalLog = document.getElementById('signalLog');
+
+    function appendLog(msg, type = 'info') {
+      const colors = {
+        info: 'text-slate-300',
+        success: 'text-emerald-400 font-bold',
+        warn: 'text-amber-400',
+        error: 'text-rose-400 font-bold'
+      };
+      const timeStr = new Date().toLocaleTimeString();
+      signalLog.innerHTML += `<div class="${colors[type] || 'text-slate-300'}">[${timeStr}] ${msg}</div>`;
+      signalLog.scrollTop = signalLog.scrollHeight;
+    }
+
+    function updateStateBadge(state) {
+      const stateStyles = {
+        connected: 'bg-emerald-950 text-emerald-400 border-emerald-800',
+        connecting: 'bg-amber-950 text-amber-400 border-amber-800',
+        disconnected: 'bg-rose-950 text-rose-400 border-rose-800'
+      };
+      statusBadge.className = `px-4 py-2 font-semibold text-xs rounded-full border ${stateStyles[state] || 'bg-slate-800 text-slate-300 border-slate-700'}`;
+      statusBadge.innerText = `Trạng thái WebRTC: ${state.toUpperCase()}`;
+    }
+
+    document.getElementById('createCallBtn').addEventListener('click', async () => {
+      const roomId = roomIdInput.value.trim();
+      if (!roomId) return alert("Vui lòng nhập mã phòng!");
+
+      appendLog(`Đang khởi tạo cuộc gọi tại room_${roomId}...`, 'info');
+      await webRTCService.getLocalStream(localVideo);
+
+      webRTCService.initPeerConnection(
+        roomId,
+        (remoteStream) => {
+          remoteVideo.srcObject = remoteStream;
+          appendLog("Đã nhận luồng remote video!", 'success');
+        },
+        (state) => {
+          updateStateBadge(state);
+          appendLog(`Trạng thái P2P thay đổi: ${state}`, 'info');
+        }
+      );
+
+      // Create & Send Offer
+      await webRTCService.createCallOffer();
+      appendLog("Đã tạo và phát SDP Offer qua Supabase Broadcast!", 'success');
+    });
+
+    document.getElementById('joinCallBtn').addEventListener('click', async () => {
+      const roomId = roomIdInput.value.trim();
+      if (!roomId) return alert("Vui lòng nhập mã phòng!");
+
+      appendLog(`Đang tham gia cuộc gọi tại room_${roomId}...`, 'info');
+      await webRTCService.getLocalStream(localVideo);
+
+      webRTCService.initPeerConnection(
+        roomId,
+        (remoteStream) => {
+          remoteVideo.srcObject = remoteStream;
+          appendLog("Đã nhận luồng remote video!", 'success');
+        },
+        (state) => {
+          updateStateBadge(state);
+          appendLog(`Trạng thái P2P thay đổi: ${state}`, 'info');
+        }
+      );
+
+      appendLog("Đang chờ SDP Offer từ Caller...", 'warn');
+    });
+
+    document.getElementById('hangupBtn').addEventListener('click', () => {
+      webRTCService.endCall();
+      localVideo.srcObject = null;
+      remoteVideo.srcObject = null;
+      updateStateBadge('disconnected');
+      appendLog("Đã tắt cuộc gọi.", 'error');
+    });
+  </script>
+</body>
+</html>

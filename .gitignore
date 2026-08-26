@@ -1,0 +1,15 @@
+# Environment & Local Secrets
+.env
+.env.*
+
+# Deployment & Cache
+.vercel/
+
+# Dependencies & Package Managers
+node_modules/
+package-lock.json
+
+# Operating System & IDE Logs
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="vi" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem("app_theme") === "dark")
+            document.documentElement.classList.add("dark");
+          if (localStorage.getItem("sidebar_collapsed") === "true")
+            document.documentElement.classList.add("sidebar-collapsed-root");
+        } catch (e) {}
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hồ sơ cá nhân | Sign Speak</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      try {
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "on-tertiary": "#ffffff",
+                "surface-container-high": "#e5e8f2",
+                surface: "#f8fafc",
+                "on-primary": "#ffffff",
+                "tertiary-fixed-dim": "#6dd2ff",
+                "on-surface": "#0f172a",
+                primary: "#005bb3",
+                "surface-variant": "#e2e8f0",
+                "on-surface-variant": "#64748b",
+                "on-secondary-container": "#fff6ff",
+                "surface-container-highest": "#e2e8f0",
+                "surface-container": "#f1f5f9",
+                "tertiary-fixed": "#bfe9ff",
+                "surface-container-low": "#f8fafc",
+                outline: "#717786",
+                "inverse-surface": "#2d3038",
+                "inverse-primary": "#a9c7ff",
+                "surface-tint": "#005db7",
+                error: "#ba1a1a",
+                "on-tertiary-fixed": "#001f2a",
+                "error-container": "#ffdad6",
+                tertiary: "#006482",
+                "on-primary-fixed": "#001b3d",
+                "tertiary-container": "#007ea4",
+                secondary: "#8300de",
+                background: "#f8fafc",
+                "on-tertiary-container": "#fbfdff",
+                "surface-container-lowest": "#ffffff",
+                "on-error-container": "#93000a",
+                "primary-container": "#0073df",
+                "secondary-fixed": "#f0dbff",
+                "on-tertiary-fixed-variant": "#004d65",
+                "primary-fixed": "#d6e3ff",
+                "on-primary-fixed-variant": "#00468c",
+                "on-background": "#0f172a",
+                "on-primary-container": "#fefcff",
+                "inverse-on-surface": "#eef0fb",
+                "surface-bright": "#f8fafc",
+                "secondary-fixed-dim": "#ddb7ff",
+                "surface-dim": "#d7dae4",
+                "secondary-container": "#9f32fe",
+                "on-error": "#ffffff",
+                "primary-fixed-dim": "#a9c7ff",
+                "outline-variant": "#c0c6d6",
+                "on-secondary-fixed": "#2c0050",
+                "on-secondary-fixed-variant": "#6900b3",
+                "on-secondary": "#ffffff",
+              },
+              borderRadius: {
+                DEFAULT: "0.25rem",
+                lg: "0.5rem",
+                xl: "1rem",
+                full: "9999px",
+              },
+              fontFamily: {
+                "label-md": ["Outfit"],
+                "headline-md": ["Outfit"],
+                "headline-lg": ["Outfit"],
+                display: ["Outfit"],
+                caption: ["Outfit"],
+                "body-md": ["Outfit"],
+                "body-lg": ["Outfit"],
+              },
+            },
+          },
+        };
+      } catch (_e) {}
+    </script>
+    <link rel="stylesheet" href="css/style.css?v=2.7.0" />
+    <script src="js/services/security_guard.js?v=2.7.0"></script>
+    <script src="js/sidebar_component.js?v=2.7.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/services/supabase_client.js?v=2.7.0"></script>
+    <script src="js/services/push_notification_service.js?v=2.7.0"></script>
+    <script src="js/services/global_call_listener.js?v=2.7.0"></script>
+    <script src="js/profile_controller.js?v=2.7.0"></script>
+  </head>
+  <body
+    class="flex min-h-screen overflow-hidden bg-background text-on-background antialiased"
+  >
+    <!-- Left Navigation Sidebar Component -->
+    <div id="sidebarContainer"></div>
+
+    <!-- Main Content Canvas -->
+    <main
+      class="ml-64 flex-1 flex flex-col h-screen overflow-hidden bg-slate-50/60 dark:bg-slate-950"
+    >
+      <!-- TopAppBar -->
+      <header
+        class="flex justify-between items-center w-full px-6 sm:px-8 h-16 bg-white dark:bg-[#151e32] border-b border-slate-200/80 dark:border-slate-800 messenger-shadow shrink-0 z-10"
+      >
+        <div class="flex items-center gap-3">
+          <a
+            href="menu.html"
+            class="md:hidden w-11 h-11 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32] outline-none"
+            title="Quay lại Menu"
+            aria-label="Quay lại Menu"
+          >
+            <span class="material-symbols-outlined text-[24px]">arrow_back</span>
+          </a>
+          <h2 class="text-lg font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-primary text-[22px]">badge</span>
+            <span>Hồ sơ cá nhân Sign Speak</span>
+          </h2>
+        </div>
+      </header>
+
+      <!-- Profile Content Scroll Area -->
+      <div class="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
+        <div class="max-w-4xl mx-auto space-y-6">
+          
+          <!-- Compact Profile Header with Overlapping Circular Avatar -->
+          <div class="bg-white dark:bg-[#151e32] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
+            <!-- Top Banner (Reduced Height) -->
+            <div class="h-28 sm:h-36 bg-gradient-to-r from-blue-600 via-primary to-indigo-700 relative overflow-hidden">
+              <div class="absolute -right-10 -top-10 w-48 h-48 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+              <div class="absolute -left-10 -bottom-10 w-48 h-48 bg-blue-400/10 rounded-full blur-xl pointer-events-none"></div>
+            </div>
+
+            <!-- Profile Info Bar with Overlapping Avatar -->
+            <div class="px-5 sm:px-6 pb-5">
+              <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12 sm:-mt-14 relative z-10">
+                <!-- Circular Avatar Overlapping Half-Edge -->
+                <div class="flex items-end gap-4">
+                  <div class="relative group shrink-0">
+                    <div
+                      id="userAvatarWrapper"
+                      role="button"
+                      tabindex="0"
+                      aria-label="Thay đổi ảnh đại diện cá nhân"
+                      class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-white dark:bg-slate-800 text-primary font-extrabold text-2xl sm:text-3xl flex items-center justify-center shadow-md border-4 border-white dark:border-[#151e32] overflow-hidden relative shrink-0 aspect-square cursor-pointer transition-transform duration-200 hover:scale-105 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32] outline-none"
+                      title="Nhấp để thay đổi ảnh đại diện"
+                    >
+                      <div
+                        id="userAvatarInitial"
+                        class="w-full h-full flex items-center justify-center font-extrabold text-2xl sm:text-3xl text-primary dark:text-primary-fixed select-none"
+                      >
+                        NA
+                      </div>
+                      <!-- Hover Overlay -->
+                      <div
+                        id="changeAvatarOverlay"
+                        class="absolute inset-0 bg-slate-950/60 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur-[2px] select-none pointer-events-none"
+                      >
+                        <span class="material-symbols-outlined text-xl">photo_camera</span>
+                        <span class="text-[10px] font-bold tracking-tight mt-0.5">Đổi ảnh</span>
+                      </div>
+                    </div>
+
+                    <input
+                      type="file"
+                      id="avatarFileInput"
+                      accept="image/*"
+                      class="hidden"
+                      aria-label="Tải lên ảnh đại diện"
+                    />
+
+                    <!-- Status Dot -->
+                    <span
+                      id="profileOnlineStatusDot"
+                      class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white dark:border-[#151e32] shadow-sm z-20 pointer-events-none ring-2 ring-emerald-500/20"
+                      title="Trạng thái trực tuyến"
+                    ></span>
+                  </div>
+
+                  <!-- Identity Text & Role Badge -->
+                  <div class="flex flex-col min-w-0 pb-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <h1
+                        id="profileDisplayName"
+                        class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate"
+                      >
+                        Nguyễn Văn An
+                      </h1>
+                      <div id="profileRoleBadge">
+                        <span
+                          class="px-2.5 py-0.5 rounded-full bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-fixed font-bold text-[11px] border border-primary/20"
+                        >
+                          Người Khiếm Thính</span
+                        >
+                      </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1 flex-wrap font-medium">
+                      <span id="profileUsernameDisplay" class="font-mono text-primary font-bold">@user84729</span>
+                      <span>•</span>
+                      <span id="profileEmailDisplay" class="truncate">nguyen.an@signspeak.com</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Layout Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+            
+            <!-- Left 2-Cols: Edit Personal Info Form -->
+            <div class="md:col-span-2 space-y-2">
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 px-1 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px]">edit</span>
+                <span>Thông tin cá nhân</span>
+              </h3>
+
+              <div class="bg-white dark:bg-[#151e32] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-2xs">
+                <form id="profileForm" class="space-y-4">
+                  <!-- Full Name -->
+                  <div class="space-y-1">
+                    <label
+                      class="block text-xs font-bold text-slate-700 dark:text-slate-300"
+                      for="fullNameInput"
+                      >Họ và tên hiển thị</label
+                    >
+                    <input
+                      id="fullNameInput"
+                      type="text"
+                      required
+                      class="w-full px-3.5 py-2.5 min-h-[44px] bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white dark:focus:bg-slate-800 transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32]"
+                      placeholder="Nhập họ và tên..."
+                    />
+                  </div>
+
+                  <!-- Username -->
+                  <div class="space-y-1">
+                    <div class="flex justify-between items-center">
+                      <label
+                        class="block text-xs font-bold text-slate-700 dark:text-slate-300"
+                        for="usernameInput"
+                        >ID Name (Tên người dùng duy nhất)</label
+                      >
+                      <span
+                        id="usernameFormattedPreview"
+                        class="text-xs font-mono font-bold text-primary dark:text-primary-fixed"
+                      ></span>
+                    </div>
+                    <div class="relative flex items-center">
+                      <span class="absolute left-3.5 text-slate-400 font-mono font-bold text-sm select-none">@</span>
+                      <input
+                        id="usernameInput"
+                        type="text"
+                        maxlength="15"
+                        class="w-full pl-8 pr-3.5 py-2.5 min-h-[44px] bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white dark:focus:bg-slate-800 transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32]"
+                        placeholder="user84729"
+                      />
+                    </div>
+                    <div
+                      id="usernameCooldownNotice"
+                      class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 text-xs font-medium leading-relaxed"
+                    >
+                      💡 Mã định danh dùng để kết bạn và tìm kiếm. Hệ thống tự động gắn dấu <strong class="text-primary font-bold">@</strong>.
+                    </div>
+                  </div>
+
+                  <!-- Email (Readonly) -->
+                  <div class="space-y-1">
+                    <label
+                      class="block text-xs font-bold text-slate-700 dark:text-slate-300"
+                      for="emailInput"
+                      >Địa chỉ Email (Cố định)</label
+                    >
+                    <input
+                      id="emailInput"
+                      type="email"
+                      readonly
+                      class="w-full px-3.5 py-2.5 min-h-[44px] bg-slate-100/80 dark:bg-slate-800/30 border border-slate-200/60 dark:border-slate-700/60 rounded-xl text-sm text-slate-500 dark:text-slate-400 cursor-not-allowed outline-none"
+                    />
+                  </div>
+
+                  <!-- Phone -->
+                  <div class="space-y-1">
+                    <label
+                      class="block text-xs font-bold text-slate-700 dark:text-slate-300"
+                      for="phoneInput"
+                      >Số điện thoại liên hệ</label
+                    >
+                    <input
+                      id="phoneInput"
+                      type="tel"
+                      class="w-full px-3.5 py-2.5 min-h-[44px] bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white dark:focus:bg-slate-800 transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32]"
+                      placeholder="**********"
+                    />
+                  </div>
+
+                  <!-- Communication Role -->
+                  <div class="space-y-1">
+                    <label
+                      class="block text-xs font-bold text-slate-700 dark:text-slate-300"
+                      for="roleSelect"
+                      >Vai trò giao tiếp mặc định</label
+                    >
+                    <select
+                      id="roleSelect"
+                      class="w-full px-3.5 py-2.5 min-h-[44px] bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white dark:focus:bg-slate-800 transition-all outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32]"
+                    >
+                      <option value="deaf">Người Khiếm Thính (Chủ yếu dùng Ngôn ngữ ký hiệu)</option>
+                      <option value="hearing">Người Nghe Nói (Chủ yếu dùng Giọng nói & Phụ đề)</option>
+                    </select>
+                  </div>
+
+                  <div id="saveMsg" class="hidden"></div>
+
+                  <button
+                    type="submit"
+                    aria-label="Lưu thay đổi hồ sơ"
+                    class="w-full py-3 min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white rounded-full font-bold text-sm shadow-sm hover:shadow transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 mt-2 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32] outline-none"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">save</span>
+                    <span>Lưu thay đổi hồ sơ</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <!-- Right 1-Col: Account Security & Statistics -->
+            <div class="md:col-span-1 space-y-6">
+              
+              <!-- Stats Group -->
+              <div>
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 px-1 flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px]">analytics</span>
+                  <span>Thống kê giao tiếp</span>
+                </h3>
+
+                <div class="bg-white dark:bg-[#151e32] border border-slate-200 dark:border-slate-800 rounded-2xl divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden shadow-2xs">
+                  <div class="flex justify-between items-center text-xs p-3.5">
+                    <span class="text-slate-600 dark:text-slate-400 font-medium">Tổng thời gian gọi:</span>
+                    <span class="font-bold text-primary dark:text-primary-fixed">14 giờ 25 phút</span>
+                  </div>
+                  <div class="flex justify-between items-center text-xs p-3.5">
+                    <span class="text-slate-600 dark:text-slate-400 font-medium">Số cử chỉ đã dịch:</span>
+                    <span class="font-bold text-primary dark:text-primary-fixed">1,420 từ</span>
+                  </div>
+                  <div class="flex justify-between items-center text-xs p-3.5">
+                    <span class="text-slate-600 dark:text-slate-400 font-medium">Độ trễ AI trung bình:</span>
+                    <span class="font-bold text-emerald-600 dark:text-emerald-400">&lt; 15ms (DTW)</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Security & Logout Group -->
+              <div>
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 px-1 flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px]">lock</span>
+                  <span>Tài khoản & Bảo mật</span>
+                </h3>
+
+                <div class="bg-white dark:bg-[#151e32] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-2xs">
+                  <button
+                    id="logoutBtn"
+                    type="button"
+                    aria-label="Đăng xuất tài khoản"
+                    class="w-full py-3 min-h-[44px] rounded-full text-xs font-bold active:scale-95 transition-all flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white shadow-2xs cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32] outline-none"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">logout</span>
+                    <span>Đăng xuất tài khoản</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

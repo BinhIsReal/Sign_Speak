@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="vi" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign_Speak — Gesture Collector & AI Evaluator</title>
+
+    <!-- Google Fonts & Material Symbols -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MediaPipe Hands CDN (15x Faster than Holistic) -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"
+      crossorigin="anonymous"
+    ></script>
+
+    <!-- Services & Modules -->
+    <link rel="stylesheet" href="css/style.css?v=2.9.0" />
+    <script src="js/services/tts_service.js?v=2.9.0"></script>
+    <script src="js/cv/feature_extractor.js?v=2.9.0"></script>
+    <script src="js/cv/occlusion_handler.js?v=2.9.0"></script>
+    <script src="js/cv/gesture_context.js?v=2.9.0"></script>
+    <script src="js/cv/dtw_classifier.js?v=2.9.0"></script>
+    <script src="js/cv/evaluate_classifier.js?v=2.9.0"></script>
+    <script src="js/collector_controller.js?v=2.9.0"></script>
+  </head>
+  <body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 antialiased selection:bg-sky-500 selection:text-white">
+    <div class="max-w-7xl mx-auto space-y-6">
+      
+      <!-- Top Header & Action Toolbar -->
+      <header
+        class="bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 p-6 rounded-3xl shadow-xl flex flex-col xl:flex-row xl:items-center justify-between gap-6 relative overflow-hidden"
+      >
+        <div class="space-y-1.5 z-10">
+          <div class="flex items-center gap-3">
+            <a
+              href="index.html"
+              class="inline-flex items-center gap-1.5 text-xs font-bold text-sky-400 hover:text-sky-300 transition-colors bg-sky-950/60 border border-sky-800/60 px-3 py-1 rounded-full"
+            >
+              <span class="material-symbols-outlined text-[16px]">arrow_back</span>
+              <span>Trang Chủ</span>
+            </a>
+            <span class="text-slate-700">|</span>
+            <span
+              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 text-xs font-bold font-mono shadow-xs"
+            >
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Phase 2 Gate: Accuracy ≥80%</span>
+            </span>
+          </div>
+          <h1
+            class="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-sky-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent tracking-tight"
+          >
+            Sign_Speak Gesture Collector & Evaluator
+          </h1>
+          <p class="text-slate-400 text-xs md:text-sm">
+            Hệ thống thu thập dữ liệu cử chỉ theo Motion Velocity Trigger & Kiểm tra thực nghiệm Accuracy ≥80%
+          </p>
+        </div>
+
+        <!-- Toolbar Buttons -->
+        <div class="flex flex-wrap items-center gap-2.5 z-10">
+          <button
+            id="scanOutliersBtn"
+            type="button"
+            class="px-3.5 py-2.5 rounded-2xl text-xs font-bold bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-700/60 flex items-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
+            title="AI tự động so sánh các mẫu của từng từ và tìm ra các mẫu quay bị lỗi/dị biệt"
+          >
+            <span class="material-symbols-outlined text-[18px]">travel_explore</span>
+            <span>AI Lọc Mẫu Dị Biệt</span>
+          </button>
+          
+          <button
+            id="resetDatasetBtn"
+            type="button"
+            class="px-3.5 py-2.5 rounded-2xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/60 text-xs font-bold flex items-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
+          >
+            <span class="material-symbols-outlined text-[18px]">restart_alt</span>
+            <span>Reset Quay Lại</span>
+          </button>
+
+          <button
+            id="exportDatasetBtn"
+            type="button"
+            class="px-3.5 py-2.5 rounded-2xl text-xs font-bold bg-slate-800/90 hover:bg-slate-700 text-sky-400 border border-slate-700 flex items-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
+            title="Tải toàn bộ bộ dữ liệu AI về máy tính cá nhân"
+          >
+            <span class="material-symbols-outlined text-[18px]">download</span>
+            <span>Xuất JSON</span>
+          </button>
+
+          <button
+            id="importDatasetBtn"
+            type="button"
+            class="px-3.5 py-2.5 rounded-2xl text-xs font-bold bg-slate-800/90 hover:bg-slate-700 text-emerald-400 border border-slate-700 flex items-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
+            title="Nạp dữ liệu AI đã lưu từ file JSON trên máy"
+          >
+            <span class="material-symbols-outlined text-[18px]">upload</span>
+            <span>Nạp JSON</span>
+          </button>
+          <input type="file" id="importDatasetInput" accept=".json" class="hidden" />
+
+          <button
+            id="runBenchmarkBtn"
+            type="button"
+            class="px-4 py-2.5 rounded-2xl text-xs font-extrabold flex items-center gap-2 text-white bg-gradient-to-r from-primary to-primary-container shadow-lg shadow-primary/25 hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+          >
+            <span class="material-symbols-outlined text-[18px]">bolt</span>
+            <span>Evaluator Gate</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Workspace Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left Controls & Dictionary (4 cols) -->
+        <div class="lg:col-span-4 space-y-6">
+          
+          <!-- Control Configuration Card -->
+          <div class="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-6 border border-slate-800/80 shadow-lg space-y-5">
+            <div class="flex items-center gap-3 pb-3 border-b border-slate-800">
+              <div class="w-10 h-10 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center font-bold">
+                <span class="material-symbols-outlined text-[22px]">tune</span>
+              </div>
+              <div>
+                <h2 class="text-base font-extrabold text-white tracking-tight">
+                  Cấu Hình Thu Thập
+                </h2>
+                <p class="text-xs text-slate-400">Chọn từ hoặc thêm từ mới vào bộ từ điển</p>
+              </div>
+            </div>
+
+            <!-- Word Selection Area -->
+            <div class="space-y-2">
+              <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider" for="signWordSelect"
+                >Từ ký hiệu cần quay:</label
+              >
+              <div class="space-y-2.5">
+                <select
+                  id="signWordSelect"
+                  class="w-full bg-slate-950 border border-slate-700/80 rounded-2xl px-4 py-3 text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 transition-all cursor-pointer"
+                >
+                  <!-- Populated dynamically -->
+                </select>
+
+                <div class="flex gap-2">
+                  <input
+                    id="newWordInput"
+                    type="text"
+                    placeholder="Nhập từ mới (ví dụ: Xin chào)..."
+                    class="flex-1 bg-slate-950 border border-slate-700/80 rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 transition-all"
+                  />
+                  <button
+                    id="addNewWordBtn"
+                    type="button"
+                    class="px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl text-xs font-bold whitespace-nowrap transition-all shadow-md active:scale-95 cursor-pointer"
+                  >
+                    + Thêm Từ
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hand Recognition Mode -->
+            <div class="space-y-2">
+              <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider"
+                >Chế độ nhận diện tay:</label
+              >
+              <div class="grid grid-cols-3 gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+                <button
+                  type="button"
+                  data-mode="auto"
+                  class="mode-btn px-3 py-2 text-xs font-bold rounded-xl bg-sky-600 text-white border border-sky-400/40 shadow-sm transition-all cursor-pointer"
+                >
+                  Tự động
+                </button>
+                <button
+                  type="button"
+                  data-mode="one_hand"
+                  class="mode-btn px-3 py-2 text-xs font-bold rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-all cursor-pointer"
+                >
+                  1 Tay
+                </button>
+                <button
+                  type="button"
+                  data-mode="two_hands"
+                  class="mode-btn px-3 py-2 text-xs font-bold rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-all cursor-pointer"
+                >
+                  2 Tay
+                </button>
+              </div>
+            </div>
+
+            <!-- Action Buttons Group -->
+            <div class="pt-2 flex flex-col gap-3">
+              <div class="flex flex-col gap-2">
+                <button
+                  id="startRecordBtn"
+                  type="button"
+                  class="w-full py-4 rounded-2xl font-extrabold text-white text-sm flex items-center justify-center gap-2.5 bg-gradient-to-r from-rose-600 to-rose-500 shadow-xl shadow-rose-600/30 hover:brightness-110 active:scale-98 transition-all cursor-pointer"
+                >
+                  <span class="material-symbols-outlined text-[20px] animate-pulse">radio_button_checked</span>
+                  <span>Bắt Đầu Thu Thập Mẫu</span>
+                </button>
+                
+                <div id="activeRecordingActionGroup" class="hidden flex gap-2">
+                  <button
+                    id="stopRecordBtn"
+                    type="button"
+                    class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-3.5 rounded-2xl font-extrabold text-white shadow-xl text-sm flex items-center justify-center gap-2 animate-pulse cursor-pointer"
+                  >
+                    <span class="material-symbols-outlined text-[20px]">check_circle</span>
+                    <span>Hoàn Tất & Lưu Mẫu</span>
+                  </button>
+                  <button
+                    id="cancelRecordBtn"
+                    type="button"
+                    class="px-4 bg-slate-800 hover:bg-slate-700 py-3.5 rounded-2xl font-bold text-slate-300 border border-slate-700 text-sm flex items-center justify-center cursor-pointer"
+                    title="Hủy bỏ lượt quay này"
+                  >
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                  </button>
+                </div>
+              </div>
+
+              <button
+                id="toggleTestModeBtn"
+                type="button"
+                class="w-full bg-emerald-600/90 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-2xl border border-emerald-500/40 text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-950 transition-all cursor-pointer active:scale-98"
+              >
+                <span class="material-symbols-outlined text-[20px]">science</span>
+                <span>Bật Chế Độ Test Ký Hiệu Trực Tiếp</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Sample List & Counter Card -->
+          <div class="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-6 border border-slate-800/80 shadow-lg space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div>
+                <h3 class="font-extrabold text-sm text-white tracking-tight">
+                  Danh Sách Mẫu Của Từ Này
+                </h3>
+                <div id="wordConsistencyLabel" class="text-[11px] font-mono text-slate-400 mt-0.5">
+                  Đang kiểm tra tính đồng nhất...
+                </div>
+              </div>
+              <span
+                id="totalSampleBadge"
+                class="text-xs bg-sky-950 text-sky-400 px-3 py-1 rounded-full border border-sky-800/80 font-mono font-bold"
+                >0 mẫu</span
+              >
+            </div>
+
+            <div
+              id="samplesListContainer"
+              class="space-y-2 max-h-60 overflow-y-auto pr-1"
+            >
+              <p class="text-slate-500 text-xs italic">
+                Chưa có mẫu cử chỉ nào được lưu.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Camera Viewport & Evaluator (8 cols) -->
+        <div class="lg:col-span-8 space-y-6">
+          <div
+            class="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-5 md:p-6 border border-slate-800/80 shadow-xl relative overflow-hidden flex flex-col items-center justify-center min-h-[480px]"
+          >
+            <!-- Mirrorable Video & Transparent Overlay Container -->
+            <div
+              id="canvasWrapper"
+              class="relative w-full max-w-[640px] aspect-[4/3] rounded-2xl overflow-hidden bg-black border-2 border-slate-800 shadow-2xl"
+            >
+              <!-- Direct Hardware GPU Video Stream (Guaranteed 60 FPS Native Preview) -->
+              <video
+                id="webcamVideo"
+                autoplay
+                playsinline
+                muted
+                class="w-full h-full object-cover absolute inset-0 z-0 mirror-mode"
+              ></video>
+
+              <!-- Transparent Canvas Overlay for Skeleton Landmarks -->
+              <canvas
+                id="outputCanvas"
+                width="640"
+                height="480"
+                class="w-full h-full object-cover absolute inset-0 z-10 pointer-events-none mirror-mode"
+              ></canvas>
+
+              <!-- Countdown & Text Overlay (STAYS 100% READABLE & UNMIRRORED) -->
+              <div
+                id="countdownOverlay"
+                class="absolute inset-0 bg-black/75 backdrop-blur-md hidden flex flex-col items-center justify-center z-20"
+              >
+                <span
+                  id="countdownNumber"
+                  class="text-8xl font-extrabold text-sky-400 font-mono animate-bounce"
+                  >3</span
+                >
+                <p class="text-slate-300 text-sm font-bold mt-4 tracking-wide">
+                  Chuẩn bị thực hiện cử chỉ tay...
+                </p>
+              </div>
+
+              <!-- REALTIME RECORDING STATUS OVERLAY -->
+              <div id="recordingMotionOverlay" class="absolute top-3 left-3 right-3 bg-amber-950/95 border border-amber-500/60 p-3 rounded-2xl backdrop-blur-md hidden flex items-center justify-between z-30 shadow-2xl">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-3 h-3 rounded-full bg-rose-500 animate-ping"></span>
+                  <span class="text-xs font-extrabold text-amber-300">🔴 ĐANG QUAY MẪU:</span>
+                  <span id="recordingFrameCounter" class="text-xs font-mono font-extrabold text-white bg-amber-900 px-2.5 py-0.5 rounded-lg border border-amber-700">0 frames</span>
+                </div>
+                <span class="text-[11px] text-amber-400 font-medium hidden sm:inline">Giữ yên tay 0.8s để chốt kết thúc mẫu</span>
+              </div>
+
+              <!-- REALTIME LIVE TEST RESULT OVERLAY -->
+              <div
+                id="testResultOverlay"
+                class="absolute bottom-3 left-3 right-3 bg-slate-950/95 border border-emerald-500/60 p-3.5 rounded-2xl backdrop-blur-md hidden flex items-center justify-between z-30 shadow-2xl"
+              >
+                <div>
+                  <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                    Kết quả Test Nhận Diện Trực Tiếp:
+                  </div>
+                  <div
+                    id="testPredictedWord"
+                    class="text-lg font-extrabold text-emerald-400"
+                  >
+                    ---
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div
+                    id="testConfidenceBadge"
+                    class="text-xs font-mono font-extrabold px-3 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700 shadow-xs"
+                  >
+                    0%
+                  </div>
+                  <div
+                    id="testDistanceText"
+                    class="text-[11px] font-mono text-slate-400 mt-1"
+                  >
+                    dist: 0.0000
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Status Bar & Motion Progress -->
+            <div class="w-full max-w-[640px] mt-4 space-y-2.5">
+              <div class="flex items-center justify-between text-xs">
+                <span id="statusLabel" class="text-slate-300 font-semibold flex items-center gap-1.5"
+                  ><span class="w-2 h-2 rounded-full bg-sky-400"></span> Trạng thái: Sẵn sàng</span
+                >
+                <span id="velocityLabel" class="font-mono text-sky-400 font-bold"
+                  >Vận tốc: 0.0000</span
+                >
+              </div>
+
+              <!-- Progress Bar -->
+              <div
+                class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 shadow-inner"
+              >
+                <div
+                  id="progressBar"
+                  class="h-full bg-gradient-to-r from-sky-500 to-emerald-400 w-0 transition-all duration-100 shadow-sm"
+                ></div>
+              </div>
+
+              <div class="flex justify-between items-center pt-1">
+                <button
+                  id="toggleMirrorBtn"
+                  type="button"
+                  class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                >
+                  <span class="material-symbols-outlined text-[16px]">flip_camera_ios</span>
+                  <span>Đảo Chiều Cam</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Live Test History Log Card -->
+            <div
+              id="testLogCard"
+              class="w-full max-w-[640px] mt-5 bg-slate-950/80 rounded-2xl p-5 border border-emerald-500/40 space-y-3 hidden shadow-lg"
+            >
+              <h3
+                class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between"
+              >
+                <span class="flex items-center gap-2"
+                  ><span class="material-symbols-outlined text-[18px]">history</span>
+                  <span>Lịch Sử Test Nhận Diện Realtime (Live Feedback)</span></span
+                >
+                <span
+                  id="testLogCountBadge"
+                  class="text-[10px] bg-emerald-950 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-800 font-mono font-bold"
+                  >0 lượt test</span
+                >
+              </h3>
+              <div
+                id="testLogList"
+                class="space-y-1.5 text-xs font-mono max-h-36 overflow-y-auto pr-1 divide-y divide-slate-800/50"
+              >
+                <p class="text-slate-500 italic text-[11px]">
+                  Chế độ Test đang bật. Hãy thực hiện cử chỉ trước camera...
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Evaluator Results Table Card -->
+          <div id="benchmarkCard" class="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-6 border border-slate-800/80 shadow-lg space-y-4">
+            <h3
+              class="text-base font-extrabold text-white flex items-center gap-2.5 tracking-tight"
+            >
+              <span class="material-symbols-outlined text-primary text-[22px]">analytics</span>
+              <span>Kết Quả Đo Thực Nghiệm maxDistanceThreshold (Blocking Gate ≥70%)</span>
+            </h3>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm">
+                <thead>
+                  <tr class="border-b border-slate-800 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                    <th class="py-3 px-4">Threshold</th>
+                    <th class="py-3 px-4">Accuracy Tổng</th>
+                    <th class="py-3 px-4">True Positive (TPR)</th>
+                    <th class="py-3 px-4">True Reject (TRR)</th>
+                    <th class="py-3 px-4">Đạt Gate ≥70%?</th>
+                  </tr>
+                </thead>
+                <tbody
+                  id="benchmarkTableBody"
+                  class="divide-y divide-slate-800/50 font-mono text-xs"
+                >
+                  <tr>
+                    <td
+                      colspan="5"
+                      class="py-6 text-center text-slate-500 text-xs italic"
+                    >
+                      Bấm "Evaluator Gate" phía trên để chạy đo kiểm tra thực nghiệm.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI OUTLIER & ANOMALY SCANNER MODAL -->
+    <div
+      id="outlierScannerModal"
+      class="fixed inset-0 bg-black/85 backdrop-blur-md hidden z-50 flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-slate-900 border border-amber-500/60 rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
+      >
+        <!-- Modal Header -->
+        <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/80">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center font-bold border border-amber-500/30">
+              <span class="material-symbols-outlined text-[22px]">travel_explore</span>
+            </div>
+            <div>
+              <h3 class="text-base font-extrabold text-amber-300 tracking-tight">
+                AI Rà Soát & Lọc Mẫu Dị Biệt (Dataset Outliers)
+              </h3>
+              <p class="text-xs text-slate-400">
+                So sánh chéo các mẫu trong cùng 1 ký tự để phát hiện mẫu quay bị lỗi hoặc khác biệt
+              </p>
+            </div>
+          </div>
+          <button
+            id="closeOutlierModalBtn"
+            type="button"
+            class="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+          >
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+
+        <!-- Modal Body / Outlier Report List -->
+        <div id="outlierScanResultsContainer" class="p-5 overflow-y-auto space-y-3 flex-1 font-mono text-xs">
+          <div class="text-center py-8 text-slate-400 text-sm">
+            <span class="animate-spin inline-block text-2xl mb-2">⏳</span>
+            <p>Đang tính toán ma trận khoảng cách DTW đa chiều giữa các mẫu...</p>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="p-4 border-t border-slate-800 bg-slate-950/90 flex items-center justify-between">
+          <span id="outlierSummaryText" class="text-xs text-slate-400 font-medium font-mono">
+            0 mẫu dị biệt được phát hiện
+          </span>
+          <div class="flex gap-2.5">
+            <button
+              id="deleteAllOutliersBtn"
+              type="button"
+              class="hidden px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer"
+            >
+              🗑️ Xoá Tất Cả Mẫu Dị Biệt
+            </button>
+            <button
+              id="closeOutlierModalBtn2"
+              type="button"
+              class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+

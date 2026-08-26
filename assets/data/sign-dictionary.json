@@ -1,0 +1,106 @@
+[
+  {
+    "id": "khong",
+    "word": "Không",
+    "category": "static",
+    "type": "one_hand",
+    "description": "Bàn tay xòe, lật qua lật lại hoặc lắc ngón trỏ ngang",
+    "media_url": "assets/media/signs/khong.gif"
+  },
+  {
+    "id": "toi",
+    "word": "Tôi",
+    "category": "static",
+    "type": "one_hand",
+    "description": "Ngón trỏ chỉ vào ngực mình",
+    "media_url": "assets/media/signs/toi.gif"
+  },
+  {
+    "id": "ban",
+    "word": "Bạn",
+    "category": "static",
+    "type": "one_hand",
+    "description": "Ngón trỏ hướng về phía người đối diện",
+    "media_url": "assets/media/signs/ban.gif"
+  },
+  {
+    "id": "cam_on",
+    "word": "Cảm ơn",
+    "category": "dynamic",
+    "type": "one_hand",
+    "description": "Bàn tay mở chạm vào cằm rồi đưa nhẹ về phía trước",
+    "media_url": "assets/media/signs/cam_on.gif"
+  },
+  {
+    "id": "xin_loi",
+    "word": "Xin lỗi",
+    "category": "dynamic",
+    "type": "one_hand",
+    "description": "Bàn tay khum chạm cằm xoay tròn nhẹ hoặc vuốt cằm",
+    "media_url": "assets/media/signs/xin_loi.gif"
+  },
+  {
+    "id": "giup_do",
+    "word": "Giúp đỡ",
+    "category": "dynamic",
+    "type": "two_hands",
+    "description": "Tay phải nắm đặt trên lòng bàn tay trái đẩy lên phía trước",
+    "media_url": "assets/media/signs/giup_do.gif"
+  },
+  {
+    "id": "vui_ve",
+    "word": "Vui vẻ",
+    "category": "dynamic",
+    "type": "two_hands",
+    "description": "Hai bàn tay xòe vỗ nhẹ lên ngực hoặc xoay trước ngực",
+    "media_url": "assets/media/signs/vui_ve.gif"
+  },
+  {
+    "id": "hen_gap_lai",
+    "word": "Hẹn gặp lại",
+    "category": "dynamic",
+    "type": "two_hands",
+    "description": "Ngón trỏ và ngón giữa 2 tay đưa lại gần nhau rồi vẫy nhẹ",
+    "media_url": "assets/media/signs/hen_gap_lai.gif"
+  },
+  {
+    "id": "tam_biet",
+    "word": "Tạm biệt",
+    "category": "dynamic",
+    "type": "one_hand",
+    "description": "Bàn tay xòe giơ cao vẫy sang 2 bên",
+    "media_url": "assets/media/signs/tam_biet.gif"
+  },
+  {
+    "id": "xin_chao",
+    "word": "Xin chào",
+    "category": "dynamic",
+    "type": "one_hand",
+    "description": "Bàn tay xòe giơ cao vẫy nhẹ (Cử chỉ vẫy tay đa nghĩa Xin chào / Tạm biệt)",
+    "media_url": "assets/media/signs/xin_chao.gif"
+  },
+  {
+    "id": "dong_y",
+    "word": "Đồng ý",
+    "category": "static",
+    "type": "one_hand",
+    "description": "Ngón cái giơ lên (Thumbs up) kết hợp gật đầu nhẹ",
+    "media_url": "assets/media/signs/dong_y.gif"
+  },
+  {
+    "id": "can_thietho tro",
+    "word": "Cần hỗ trợ",
+    "category": "dynamic",
+    "type": "two_hands",
+    "description": "Bàn tay trái xòe ngửa, tay phải gõ nhẹ vào lòng bàn tay trái",
+    "media_url": "assets/media/signs/can_ho_tro.gif"
+  },
+  {
+    "id": "khoe_manh",
+    "word": "Khỏe mạnh",
+    "category": "dynamic",
+    "type": "two_hands",
+    "description": "Hai bàn tay nắm lại đưa lên trước hai bên vai thể hiện sức mạnh",
+    "media_url": "assets/media/signs/khoe_manh.gif"
+  }
+]

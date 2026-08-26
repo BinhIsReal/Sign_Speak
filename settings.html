@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="vi" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem("app_theme") === "dark")
+            document.documentElement.classList.add("dark");
+          if (localStorage.getItem("sidebar_collapsed") === "true")
+            document.documentElement.classList.add("sidebar-collapsed-root");
+        } catch (e) {}
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cài đặt | Sign Speak</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      try {
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "on-tertiary": "#ffffff",
+                "surface-container-high": "#e5e8f2",
+                surface: "#f8fafc",
+                "on-primary": "#ffffff",
+                "tertiary-fixed-dim": "#6dd2ff",
+                "on-surface": "#0f172a",
+                primary: "#005bb3",
+                "surface-variant": "#e2e8f0",
+                "on-surface-variant": "#64748b",
+                "on-secondary-container": "#fff6ff",
+                "surface-container-highest": "#e2e8f0",
+                "surface-container": "#f1f5f9",
+                "tertiary-fixed": "#bfe9ff",
+                "surface-container-low": "#f8fafc",
+                outline: "#717786",
+                "inverse-surface": "#2d3038",
+                "inverse-primary": "#a9c7ff",
+                "surface-tint": "#005db7",
+                error: "#ba1a1a",
+                "on-tertiary-fixed": "#001f2a",
+                "error-container": "#ffdad6",
+                tertiary: "#006482",
+                "on-primary-fixed": "#001b3d",
+                "tertiary-container": "#007ea4",
+                secondary: "#8300de",
+                background: "#f8fafc",
+                "on-tertiary-container": "#fbfdff",
+                "surface-container-lowest": "#ffffff",
+                "on-error-container": "#93000a",
+                "primary-container": "#0073df",
+                "secondary-fixed": "#f0dbff",
+                "on-tertiary-fixed-variant": "#004d65",
+                "primary-fixed": "#d6e3ff",
+                "on-primary-fixed-variant": "#00468c",
+                "on-background": "#0f172a",
+                "on-primary-container": "#fefcff",
+                "inverse-on-surface": "#eef0fb",
+                "surface-bright": "#f8fafc",
+                "secondary-fixed-dim": "#ddb7ff",
+                "surface-dim": "#d7dae4",
+                "secondary-container": "#9f32fe",
+                "on-error": "#ffffff",
+                "primary-fixed-dim": "#a9c7ff",
+                "outline-variant": "#c0c6d6",
+                "on-secondary-fixed": "#2c0050",
+                "on-secondary-fixed-variant": "#6900b3",
+                "on-secondary": "#ffffff",
+              },
+              borderRadius: {
+                DEFAULT: "0.25rem",
+                lg: "0.5rem",
+                xl: "1rem",
+                full: "9999px",
+              },
+              fontFamily: {
+                "label-md": ["Outfit"],
+                "headline-md": ["Outfit"],
+                "headline-lg": ["Outfit"],
+                display: ["Outfit"],
+                caption: ["Outfit"],
+                "body-md": ["Outfit"],
+                "body-lg": ["Outfit"],
+              },
+            },
+          },
+        };
+      } catch (_e) {}
+    </script>
+    <link rel="stylesheet" href="css/style.css?v=2.7.0" />
+    <script src="js/services/security_guard.js?v=2.7.0"></script>
+    <script src="js/sidebar_component.js?v=2.7.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/services/supabase_client.js?v=2.7.0"></script>
+    <script src="js/services/push_notification_service.js?v=2.7.0"></script>
+    <script src="js/services/global_call_listener.js?v=2.7.0"></script>
+    <script src="js/settings_controller.js?v=2.7.0"></script>
+  </head>
+  <body
+    class="flex min-h-screen overflow-hidden bg-background text-on-background antialiased"
+  >
+    <!-- Left Navigation Sidebar Component -->
+    <div id="sidebarContainer"></div>
+
+    <!-- Main Content Canvas -->
+    <main
+      class="ml-64 flex-1 flex flex-col h-screen overflow-hidden bg-slate-50/60 dark:bg-slate-950"
+    >
+      <!-- TopAppBar with Compact Save Button -->
+      <header
+        class="flex justify-between items-center w-full px-6 sm:px-8 h-16 bg-white dark:bg-[#151e32] border-b border-slate-200/80 dark:border-slate-800 messenger-shadow shrink-0 z-10"
+      >
+        <div class="flex items-center gap-3">
+          <a
+            href="menu.html"
+            class="md:hidden w-11 h-11 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32] outline-none"
+            title="Quay lại Menu"
+            aria-label="Quay lại Menu"
+          >
+            <span class="material-symbols-outlined text-[24px]">arrow_back</span>
+          </a>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-primary text-[22px]">settings</span>
+            <span>Cài đặt hệ thống</span>
+          </h2>
+        </div>
+
+        <!-- Compact Primary Save Button Fixed on Header Right -->
+        <button
+          id="saveSettingsBtn"
+          type="button"
+          aria-label="Lưu tất cả cài đặt"
+          class="px-4 py-2.5 min-h-[40px] bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-bold shadow-2xs hover:shadow transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32] outline-none"
+        >
+          <span class="material-symbols-outlined text-[16px]">save</span>
+          <span class="hidden sm:inline">Lưu cài đặt</span>
+          <span class="sm:hidden">Lưu</span>
+        </button>
+      </header>
+
+      <!-- Settings Content Scroll Area -->
+      <div class="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
+        <div class="max-w-3xl mx-auto space-y-6">
+          
+          <!-- Section 1: Interface & Display -->
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 px-1 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px]">palette</span>
+              <span>Giao diện & Hiển thị</span>
+            </h3>
+            
+            <div class="bg-white dark:bg-[#151e32] border border-slate-200/90 dark:border-slate-800 rounded-2xl divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden shadow-2xs">
+              <!-- Item 1: Theme Switcher -->
+              <div class="flex items-center justify-between gap-4 py-3 sm:py-3.5 px-4 sm:px-5 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors">
+                <div class="flex flex-col min-w-0 pr-2">
+                  <span class="text-sm font-bold text-slate-900 dark:text-white">Chế độ giao diện (Theme)</span>
+                  <span class="text-xs text-slate-500 dark:text-slate-400 mt-0.5" id="themeDesc">Giao diện sáng tiêu chuẩn (Light Mode)</span>
+                </div>
+                <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-full border border-slate-200/80 dark:border-slate-700/80 shrink-0">
+                  <button
+                    id="themeLightBtn"
+                    type="button"
+                    aria-label="Chuyển sang giao diện sáng"
+                    class="px-3.5 py-1.5 min-h-[36px] rounded-full font-bold text-xs transition-all bg-primary text-white shadow-2xs cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32] outline-none"
+                  >
+                    ☀️ Sáng
+                  </button>
+                  <button
+                    id="themeDarkBtn"
+                    type="button"
+                    aria-label="Chuyển sang giao diện tối"
+                    class="px-3.5 py-1.5 min-h-[36px] rounded-full font-bold text-xs transition-all text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32] outline-none"
+                  >
+                    🌙 Tối
+                  </button>
+                </div>
+              </div>
+
+              <!-- Item 2: Font Size Slider -->
+              <div class="flex items-center justify-between gap-4 py-3 sm:py-3.5 px-4 sm:px-5 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors">
+                <div class="flex flex-col min-w-0 pr-2">
+                  <span class="text-sm font-bold text-slate-900 dark:text-white">Kích thước chữ hệ thống</span>
+                  <span class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Điều chỉnh độ lớn văn bản (14px - 20px)</span>
+                </div>
+                <div class="flex items-center gap-2.5 shrink-0">
+                  <span class="text-xs font-bold text-slate-400">A</span>
+                  <div class="flex flex-col items-center">
+                    <input
+                      id="fontSizeSlider"
+                      aria-label="Điều chỉnh kích thước chữ hệ thống"
+                      class="w-28 sm:w-40 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full appearance-none cursor-pointer accent-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32] outline-none"
+                      type="range"
+                      min="14"
+                      max="20"
+                      step="2"
+                      value="16"
+                    />
+                    <!-- Tick Marks -->
+                    <div class="w-full flex justify-between px-0.5 mt-1 text-[9px] font-mono text-slate-400 dark:text-slate-500 select-none">
+                      <button type="button" aria-label="Cỡ chữ 14px" class="font-size-tick hover:text-primary transition-colors cursor-pointer" data-size="14">14</button>
+                      <button type="button" aria-label="Cỡ chữ 16px" class="font-size-tick hover:text-primary transition-colors cursor-pointer" data-size="16">16</button>
+                      <button type="button" aria-label="Cỡ chữ 18px" class="font-size-tick hover:text-primary transition-colors cursor-pointer" data-size="18">18</button>
+                      <button type="button" aria-label="Cỡ chữ 20px" class="font-size-tick hover:text-primary transition-colors cursor-pointer" data-size="20">20</button>
+                    </div>
+                  </div>
+                  <span class="text-base font-bold text-slate-900 dark:text-white">A</span>
+                  <span
+                    id="fontSizeBadge"
+                    class="text-xs font-mono font-bold bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-fixed px-2 py-0.5 rounded-md border border-primary/20 min-w-[40px] text-center"
+                    >16px</span
+                  >
+                </div>
+              </div>
+
+              <!-- Item 3: Diagnostic HUD Toggle -->
+              <div class="flex items-center justify-between gap-4 py-3 sm:py-3.5 px-4 sm:px-5 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors">
+                <div class="flex flex-col min-w-0 pr-2">
+                  <span class="text-sm font-bold text-slate-900 dark:text-white">Khung chẩn đoán AI (Diagnostic HUD)</span>
+                  <span class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Hiển thị FPS, độ trễ AI Latency & landmark bàn tay khi gọi video</span>
+                </div>
+                <div
+                  id="hudToggle"
+                  role="switch"
+                  tabindex="0"
+                  aria-label="Bật tắt khung chẩn đoán AI Diagnostic HUD"
+                  class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-primary transition-colors duration-200 ease-in-out shadow-2xs focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32] outline-none"
+                >
+                  <span
+                    id="hudDot"
+                    class="pointer-events-none inline-block h-5 w-5 transform translate-x-5 rounded-full bg-white shadow-sm transition duration-200 ease-in-out"
+                  ></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Subtitle & Accessibility Configuration -->
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 px-1 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px]">accessibility_new</span>
+              <span>Cấu hình Phụ đề Live & Khả năng tiếp cận</span>
+            </h3>
+
+            <div class="bg-white dark:bg-[#151e32] border border-slate-200/90 dark:border-slate-800 rounded-2xl divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden shadow-2xs">
+              <!-- Item 1: Subtitle Mode -->
+              <div class="flex items-center justify-between gap-4 py-3 sm:py-3.5 px-4 sm:px-5 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors">
+                <div class="flex flex-col min-w-0 pr-2">
+                  <span class="text-sm font-bold text-slate-900 dark:text-white">Chế độ phụ đề mặc định</span>
+                  <span class="text-xs text-slate-500 dark:text-slate-400 mt-0.5" id="subtitleModeDesc">Glassmorphism Overlay (Viên thuốc nổi lơ lửng đè trên video)</span>
+                </div>
+                <button
+                  id="subtitleModeBtn"
+                  type="button"
+                  aria-label="Thay đổi chế độ hiển thị phụ đề"
+                  class="px-3.5 py-2 min-h-[38px] bg-blue-600 dark:bg-primary text-white rounded-full text-xs font-semibold shadow-2xs hover:brightness-110 shrink-0 transition-all cursor-pointer active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32] outline-none"
+                >
+                  Glassmorphism Overlay 📱
+                </button>
+              </div>
+
+              <!-- Item 2: Overlay Opacity Slider -->
+              <div class="flex items-center justify-between gap-4 py-3 sm:py-3.5 px-4 sm:px-5 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors">
+                <div class="flex flex-col min-w-0 pr-2">
+                  <span class="text-sm font-bold text-slate-900 dark:text-white">Độ đậm nhạt Glassmorphism Overlay</span>
+                  <span class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Độ trong suốt nền phụ đề nổi</span>
+                </div>
+                <div class="flex items-center gap-3 shrink-0">
+                  <input
+                    id="overlayOpacityInput"
+                    type="range"
+                    min="20"
+                    max="100"
+                    step="5"
+                    value="80"
+                    aria-label="Độ đậm nhạt Glassmorphism Overlay"
+                    class="w-28 sm:w-40 h-1.5 rounded-full appearance-none cursor-pointer accent-primary bg-slate-200 dark:bg-slate-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32] outline-none"
+                  />
+                  <span
+                    id="overlayOpacityBadge"
+                    class="font-mono font-bold text-primary dark:text-primary-fixed bg-primary/10 dark:bg-primary/20 px-2 py-0.5 rounded-md text-xs border border-primary/20 min-w-[40px] text-center"
+                    >80%</span
+                  >
+                </div>
+              </div>
+
+              <!-- Item 3: Fixed Bar Opacity Slider -->
+              <div class="flex items-center justify-between gap-4 py-3 sm:py-3.5 px-4 sm:px-5 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors">
+                <div class="flex flex-col min-w-0 pr-2">
+                  <span class="text-sm font-bold text-slate-900 dark:text-white">Độ đậm nhạt Fixed Subtitle Bar</span>
+                  <span class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Độ trong suốt băng chuyền cố định</span>
+                </div>
+                <div class="flex items-center gap-3 shrink-0">
+                  <input
+                    id="fixedBarOpacityInput"
+                    type="range"
+                    min="20"
+                    max="100"
+                    step="5"
+                    value="90"
+                    aria-label="Độ đậm nhạt Fixed Subtitle Bar"
+                    class="w-28 sm:w-40 h-1.5 rounded-full appearance-none cursor-pointer accent-primary bg-slate-200 dark:bg-slate-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#151e32] outline-none"
+                  />
+                  <span
+                    id="fixedBarOpacityBadge"
+                    class="font-mono font-bold text-primary dark:text-primary-fixed bg-primary/10 dark:bg-primary/20 px-2 py-0.5 rounded-md text-xs border border-primary/20 min-w-[40px] text-center"
+                    >90%</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: Live Preview Section -->
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 px-1 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px]">visibility</span>
+              <span>Xem trước trực quan (Live Preview)</span>
+            </h3>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2.5 shadow-2xs">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-sky-400 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Mô phỏng phụ đề cuộc gọi video</span>
+                </span>
+                <span class="text-[10px] text-slate-400 font-mono">Real-time simulation</span>
+              </div>
+
+              <!-- Mock Video Stream Canvas Viewport (Compact Height) -->
+              <div class="relative w-full h-36 sm:h-40 rounded-xl bg-gradient-to-br from-slate-800 via-slate-900 to-black overflow-hidden flex items-center justify-center border border-slate-800">
+                <p class="text-xs font-medium text-slate-500 select-none">
+                  Video Stream Mockup
+                </p>
+
+                <!-- Preview Subtitle Overlay -->
+                <div
+                  id="previewSubtitleOverlay"
+                  class="absolute bottom-3 left-4 right-4 z-10 transition-all duration-200"
+                >
+                  <div
+                    id="previewOverlayInner"
+                    class="rounded-full py-1.5 px-4 text-center border border-blue-500/40 max-w-xs mx-auto backdrop-blur-md shadow-lg"
+                    style="background-color: rgba(15, 23, 42, 0.85)"
+                  >
+                    <p class="text-xs sm:text-sm font-bold text-white">
+                      <span>[Ký Hiệu]: Xin chào</span>
+                      <span class="text-xs text-sky-300 font-mono ml-1.5">(96%)</span>
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Preview Fixed Subtitle Bar -->
+                <div
+                  id="previewFixedBar"
+                  class="hidden absolute bottom-0 left-0 right-0 p-2 text-center border-t border-slate-700 transition-all duration-200"
+                  style="background-color: rgba(15, 23, 42, 0.95)"
+                >
+                  <span class="text-slate-400 text-[10px] font-semibold uppercase block mb-0.5">Băng Chuyền Phụ Đề Live:</span>
+                  <p class="text-sky-300 text-xs sm:text-sm font-bold">
+                    [Ký Hiệu]: Xin chào
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,1231 @@
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 · genre: modern-minimal · theme: Messenger-Web */
+/* Sign_Speak Core Design System & Custom Styles (Messenger Web Theme) */
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap");
+
+:root {
+  --bg-primary: #f8fafc;
+  --bg-card: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --accent-blue: #005bb3;
+  --accent-blue-hover: #00468c;
+  --border-light: #e2e8f0;
+  --font-base: 16px;
+}
+
+body {
+  font-family: "Outfit", sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  min-height: 100vh;
+  font-size: var(--font-base);
+}
+
+/* Accessibility Contrast Modes */
+body.contrast-high {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+body.contrast-high .glass-card,
+body.contrast-high .messenger-card,
+body.contrast-high .messenger-sidebar {
+  background-color: #111111 !important;
+  color: #ffffff !important;
+  border: 2px solid #ffffff !important;
+}
+
+body.contrast-high .text-slate-500,
+body.contrast-high .text-slate-400,
+body.contrast-high .text-slate-600 {
+  color: #e2e8f0 !important;
+}
+
+body.font-size-small {
+  var-font-base: 14px;
+  font-size: 14px;
+}
+body.font-size-large {
+  var-font-base: 19px;
+  font-size: 19px;
+}
+
+/* Messenger Web Glassmorphism & Card Components */
+.glass-card,
+.messenger-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.03),
+    0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.messenger-sidebar {
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+}
+
+/* Messenger Primary Buttons */
+.gradient-btn,
+.messenger-btn-primary {
+  background-color: var(--accent-blue);
+  color: #ffffff;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gradient-btn:hover,
+.messenger-btn-primary:hover {
+  background-color: var(--accent-blue-hover);
+  box-shadow: 0 4px 14px rgba(0, 91, 179, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Video Subtitle Modes (Messenger Floating Glassmorphic Overlay) */
+.subtitle-overlay {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  padding: 12px 28px;
+  border-radius: 9999px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  z-index: 40;
+  max-width: 90%;
+  text-align: center;
+  color: #ffffff;
+}
+
+.subtitle-fixed-bar {
+  position: relative;
+  width: 100%;
+  background: #0f172a;
+  border-top: 2px solid #1e293b;
+  padding: 16px;
+  border-radius: 0 0 16px 16px;
+  text-align: center;
+  color: #ffffff;
+}
+
+/* Webcam Mirror Flip */
+.mirror-mode,
+.video-mirror {
+  transform: scaleX(-1);
+  -webkit-transform: scaleX(-1);
+}
+
+/* Smooth Messenger Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Layout & Sidebar Transitions */
+.sidebar-transition {
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.content-transition {
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Glass Panel & Login/Liquid Gradients */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 91, 179, 0.12);
+}
+.login-gradient {
+  background: linear-gradient(135deg, #005bb3 0%, #8300de 100%);
+}
+.liquid-bg {
+  background: linear-gradient(135deg, #005bb3 0%, #8300de 100%);
+  position: relative;
+  overflow: hidden;
+}
+.glass-caption {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(16px);
+}
+.messenger-shadow {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+.material-symbols-outlined {
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 24;
+}
+
+/* ---------------------------------------------------- */
+/* PREMIUM HIGH-CONTRAST DARK MODE ENGINE (html.dark) */
+/* Inspired by Messenger Web, Discord & Apple Dark Modes */
+/* ---------------------------------------------------- */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0b1120 !important;
+  color: #f8fafc !important;
+}
+
+html.dark nav,
+html.dark header,
+html.dark aside,
+html.dark footer,
+html.dark section.bg-white,
+html.dark div.bg-white {
+  background-color: #151e32 !important;
+  border-color: #243350 !important;
+  color: #f8fafc !important;
+}
+
+html.dark main,
+html.dark div.bg-slate-50\/50,
+html.dark div.bg-slate-50 {
+  background-color: #0b1120 !important;
+  border-color: #243350 !important;
+}
+
+html.dark div.bg-slate-50\/80,
+html.dark div.bg-slate-100\/70,
+html.dark div.bg-slate-100\/80,
+html.dark div.bg-slate-100 {
+  background-color: #1e2942 !important;
+  border-color: #243350 !important;
+}
+
+/* High Contrast Title Typography */
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark h5,
+html.dark h6,
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+html.dark .text-slate-700,
+html.dark .text-on-surface {
+  color: #ffffff !important;
+}
+
+/* Subtitles & Descriptions - Crisp Light Slate Blue 300 for 100% Legibility */
+html.dark .text-slate-500,
+html.dark .text-slate-600,
+html.dark .text-slate-400,
+html.dark .text-on-surface-variant {
+  color: #cbd5e1 !important;
+}
+
+/* Vibrant Sky Blue Accent Colors in Dark Mode */
+html.dark .text-primary {
+  color: #38bdf8 !important;
+}
+
+html.dark .bg-primary\/10 {
+  background-color: rgba(56, 189, 248, 0.15) !important;
+}
+
+html.dark .border-primary {
+  border-color: #38bdf8 !important;
+}
+
+/* High Contrast Inputs, Selects & Textareas */
+html.dark input[type="text"],
+html.dark input[type="password"],
+html.dark input[type="email"],
+html.dark input[type="tel"],
+html.dark input[type="number"],
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: #1e2942 !important;
+  color: #ffffff !important;
+  border-color: #334155 !important;
+}
+
+html.dark input::placeholder {
+  color: #94a3b8 !important;
+}
+
+#logoutBtn {
+  background-color: rgb(223, 24, 68) !important;
+  color: #ffffff !important;
+}
+
+/* Navigation & Action Buttons in Dark Mode */
+html.dark .bg-slate-100,
+html.dark a.bg-slate-100,
+html.dark button.bg-slate-100 {
+  background-color: #1e2942 !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155 !important;
+}
+
+html.dark #toggleSidebarBtn {
+  background-color: #1e2942 !important;
+  color: #ffffff !important;
+  border-color: #334155 !important;
+}
+
+html.dark #switchSubtitleModeBtn {
+  background-color: #1e2942 !important;
+  color: #38bdf8 !important;
+  border-color: #334155 !important;
+}
+
+/* Chat Bubble Container & Stream Overrides */
+html.dark .bg-surface,
+html.dark #chatStream,
+html.dark .chat-content-stream {
+  background-color: #0b1120 !important;
+  border-color: #243350 !important;
+  color: #ffffff !important;
+}
+
+/* Borders */
+html.dark .border-slate-100,
+html.dark .border-slate-200\/80,
+html.dark .border-slate-200\/60,
+html.dark .border-slate-200\/50,
+html.dark .border-slate-200,
+html.dark .border-outline-variant {
+  border-color: #243350 !important;
+}
+
+/* Custom User-Requested Dark Mode Hover & Background Overrides */
+html.dark .bg-slate-200 {
+  background-color: rgb(110 110 110) !important;
+}
+
+html.dark .hover\:bg-slate-100\/80:hover,
+html.dark .hover\:bg-slate-100\/70:hover,
+html.dark .hover\:bg-slate-100:hover,
+html.dark a.hover\:bg-slate-100\/80:hover,
+html.dark button.hover\:bg-slate-100\/80:hover,
+html.dark div.hover\:bg-slate-100\/80:hover,
+html.dark a.hover\:bg-slate-100:hover,
+html.dark button.hover\:bg-slate-100:hover,
+html.dark div.hover\:bg-slate-100:hover {
+  background-color: rgb(23 63 103 / 80%) !important;
+}
+
+/* Universal Checkbox Styling (White Background, Dark Navy Checkmark #0f172a) */
+input[type="checkbox"],
+html.dark input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.15rem !important;
+  height: 1.15rem !important;
+  background-color: #ffffff !important;
+  border: 2px solid #94a3b8 !important;
+  border-radius: 0.375rem !important;
+  display: inline-grid !important;
+  place-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease-in-out !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+  flex-shrink: 0 !important;
+}
+
+input[type="checkbox"]::before,
+html.dark input[type="checkbox"]::before {
+  content: "" !important;
+  width: 0.65rem !important;
+  height: 0.65rem !important;
+  transform: scale(0) !important;
+  transition: 120ms transform ease-in-out !important;
+  background-color: #0f172a !important;
+  transform-origin: center !important;
+  clip-path: polygon(
+    14% 44%,
+    0 65%,
+    50% 100%,
+    100% 16%,
+    80% 0%,
+    43% 62%
+  ) !important;
+}
+
+input[type="checkbox"]:checked::before,
+html.dark input[type="checkbox"]:checked::before {
+  transform: scale(1) !important;
+}
+
+/* High Contrast Feature Cards in Login & Register Left Banner */
+.liquid-bg .glass-panel,
+.login-gradient .glass-panel,
+html.dark .liquid-bg .glass-panel,
+html.dark .login-gradient .glass-panel {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2) !important;
+}
+
+.liquid-bg .glass-panel *,
+.login-gradient .glass-panel * {
+  color: #0f172a !important;
+}
+
+.liquid-bg .glass-panel .text-caption,
+.liquid-bg .glass-panel .text-on-surface-variant,
+.login-gradient .glass-panel .text-caption,
+.login-gradient .glass-panel .text-on-surface-variant {
+  color: #475569 !important;
+}
+
+.liquid-bg .glass-panel .material-symbols-outlined,
+.login-gradient .glass-panel .material-symbols-outlined {
+  color: #005bb3 !important;
+}
+
+/* ---------------------------------------------------- */
+/* MODERN MINIMAL OUTLINED ICON STYLE */
+/* ---------------------------------------------------- */
+.material-symbols-outlined {
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 350,
+    "GRAD" 0,
+    "opsz" 24 !important;
+}
+
+/* ---------------------------------------------------- */
+/* INSTANT COLLAPSIBLE SIDEBAR ENGINE (Icon Only Mode) */
+/* ---------------------------------------------------- */
+nav.fixed.left-0 {
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+main {
+  transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Collapsed Sidebar State - Scope ONLY to Left Navigation Sidebar (nav.fixed.left-0) */
+html.sidebar-collapsed-root nav.fixed.left-0,
+body.sidebar-collapsed nav.fixed.left-0 {
+  width: 5rem !important;
+}
+
+html.sidebar-collapsed-root main.ml-64,
+body.sidebar-collapsed main.ml-64 {
+  margin-left: 5rem !important;
+}
+
+/* Hide text ONLY inside Left Navigation Sidebar (nav.fixed.left-0) */
+html.sidebar-collapsed-root nav.fixed.left-0 .sidebar-label,
+html.sidebar-collapsed-root nav.fixed.left-0 .sidebar-text-group,
+html.sidebar-collapsed-root
+  nav.fixed.left-0
+  span:not(.material-symbols-outlined):not(.nav-badge),
+html.sidebar-collapsed-root nav.fixed.left-0 p,
+html.sidebar-collapsed-root nav.fixed.left-0 .flex-col.min-w-0,
+body.sidebar-collapsed nav.fixed.left-0 .sidebar-label,
+body.sidebar-collapsed nav.fixed.left-0 .sidebar-text-group,
+body.sidebar-collapsed nav.fixed.left-0 span:not(.material-symbols-outlined):not(.nav-badge),
+body.sidebar-collapsed nav.fixed.left-0 p,
+body.sidebar-collapsed nav.fixed.left-0 .flex-col.min-w-0 {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Position Badge at Top-Right Corner of Nav Item when Collapsed */
+html.sidebar-collapsed-root nav.fixed.left-0 .nav-badge:not(.hidden),
+body.sidebar-collapsed nav.fixed.left-0 .nav-badge:not(.hidden) {
+  display: inline-flex !important;
+  position: absolute !important;
+  top: 0.25rem !important;
+  right: 0.25rem !important;
+  min-width: 1.1rem !important;
+  height: 1.1rem !important;
+  padding: 0 0.25rem !important;
+  font-size: 0.65rem !important;
+  z-index: 30 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Sidebar Top Padding & Center Alignment */
+html.sidebar-collapsed-root nav.fixed.left-0 .p-6,
+body.sidebar-collapsed nav.fixed.left-0 .p-6 {
+  padding: 1rem 0.5rem !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+/* Navigation Links Center Alignment */
+html.sidebar-collapsed-root nav.fixed.left-0 a,
+body.sidebar-collapsed nav.fixed.left-0 a {
+  justify-content: center !important;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+  gap: 0 !important;
+}
+
+html.sidebar-collapsed-root nav.fixed.left-0 a span.material-symbols-outlined,
+body.sidebar-collapsed nav.fixed.left-0 a span.material-symbols-outlined {
+  font-size: 24px !important;
+}
+
+/* Floating Action Button (Call / New Chat) ONLY inside Left Navigation Sidebar */
+html.sidebar-collapsed-root nav.fixed.left-0 a[href="call.html"],
+body.sidebar-collapsed nav.fixed.left-0 a[href="call.html"] {
+  width: 2.75rem !important;
+  height: 2.75rem !important;
+  padding: 0 !important;
+  margin: 1rem auto 0 auto !important;
+  border-radius: 9999px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Profile Link at Bottom ONLY inside Left Navigation Sidebar */
+html.sidebar-collapsed-root nav.fixed.left-0 #sidebarProfileLink,
+body.sidebar-collapsed nav.fixed.left-0 #sidebarProfileLink {
+  justify-content: center !important;
+  padding: 0.35rem !important;
+  margin-top: 0.5rem !important;
+  border-radius: 9999px !important;
+}
+
+/* Transcript Log & Realtime Chat Styling (Matches Chat Content Stream #chatStream) */
+#transcriptSidebar {
+  background-color: #f8fafc !important;
+}
+
+#transcriptSidebar > div:first-child,
+#callChatForm {
+  background-color: #ffffff !important;
+  border-color: rgba(226, 232, 240, 0.8) !important;
+}
+
+html.dark #transcriptSidebar,
+html.dark #transcriptList {
+  background-color: #1e2942 !important;
+  border-color: rgba(30, 41, 59, 0.8) !important;
+}
+
+html.dark #transcriptSidebar > div:first-child,
+html.dark #callChatForm {
+  background-color: #151e32 !important;
+  border-color: #1e2942 !important;
+}
+
+html.dark #callChatInput {
+  background-color: #1e2942 !important;
+  border-color: #334155 !important;
+  color: #ffffff !important;
+}
+
+html.dark #transcriptList .bg-surface,
+html.dark #transcriptList .transcript-msg-bubble {
+  background-color: #151e32 !important;
+  border-color: rgba(51, 65, 85, 0.8) !important;
+  color: #ffffff !important;
+}
+
+/* Vibrant Red Unread Badge with Centered Number for Sidebar & Conversation Cards */
+.nav-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 1.25rem !important;
+  height: 1.25rem !important;
+  padding: 0 0.375rem !important;
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+  font-size: 0.7rem !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4) !important;
+  animation: badgePulse 2s infinite;
+}
+
+.nav-badge.hidden {
+  display: none !important;
+}
+
+@keyframes badgePulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ========================================================================== */
+/* STANDARDIZED MOBILE RESPONSIVE ENGINE (MOBILE & TABLET BREAKPOINTS)        */
+/* ========================================================================== */
+
+/* Prevent iOS Safari input zoom & touch highlight */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="tel"],
+input[type="number"],
+select,
+textarea {
+  font-size: 16px;
+}
+
+button, a, input, select, textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* -------------------------------------------------------------------------- */
+/* MOBILE BREAKPOINT: max-width: 768px (Smartphones & Portrait Tablets)       */
+/* -------------------------------------------------------------------------- */
+@media screen and (max-width: 768px) {
+  html, body {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    position: relative !important;
+  }
+
+  /* Reset main margin for mobile screens */
+  main,
+  main.ml-64,
+  main.ml-20,
+  main.ml-0 {
+    margin-left: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    padding-bottom: 4rem !important;
+    box-sizing: border-box !important;
+  }
+
+  /* --- 1. Mobile Navigation Bar (Use #mobileBottomNav on mobile, hide desktop #leftSidebarNav) --- */
+  #leftSidebarNav {
+    display: none !important;
+  }
+
+  /* Bottom Navigation Links Container */
+  nav.fixed.left-0 .mt-2.px-4,
+  #leftSidebarNav .mt-2.px-4 {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-around !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin-top: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  nav.fixed.left-0 a,
+  #leftSidebarNav a {
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0.25rem 0.5rem !important;
+    border-radius: 0.5rem !important;
+    border-right: none !important;
+    gap: 0.1rem !important;
+    min-width: 3.2rem !important;
+    height: 100% !important;
+    background: transparent !important;
+  }
+
+  nav.fixed.left-0 a span.material-symbols-outlined,
+  #leftSidebarNav a span.material-symbols-outlined {
+    font-size: 22px !important;
+  }
+
+  nav.fixed.left-0 a span:not(.material-symbols-outlined):not(.nav-badge),
+  #leftSidebarNav a span:not(.material-symbols-outlined):not(.nav-badge) {
+    display: block !important;
+    font-size: 0.65rem !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+
+  /* Call Action Button inside Bottom Nav */
+  nav.fixed.left-0 a[href="call.html"],
+  #leftSidebarNav a[href="call.html"] {
+    margin: 0 !important;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    border-radius: 9999px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 12px rgba(0, 132, 255, 0.3) !important;
+  }
+
+  nav.fixed.left-0 a[href="call.html"] span:not(.material-symbols-outlined),
+  #leftSidebarNav a[href="call.html"] span:not(.material-symbols-outlined) {
+    display: none !important;
+  }
+
+  #sidebarProfileLink {
+    margin-top: 0 !important;
+    padding: 0.2rem !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  #sidebarProfileLink .flex-col.min-w-0 {
+    display: none !important;
+  }
+
+  #sidebarUserAvatar {
+    width: 1.75rem !important;
+    height: 1.75rem !important;
+    font-size: 0.65rem !important;
+  }
+
+  /* Badge in Mobile Bottom Nav */
+  nav.fixed.left-0 .nav-badge:not(.hidden) {
+    top: 0.15rem !important;
+    right: 0.4rem !important;
+    min-width: 1rem !important;
+    height: 1rem !important;
+    font-size: 0.6rem !important;
+    padding: 0 0.2rem !important;
+  }
+
+  /* --- 2. Mobile Responsive Messaging (index.html) --- */
+  /* Main messaging area on mobile */
+  body:not(.mobile-chat-open) main > section:first-of-type,
+  body:not(.mobile-chat-open) main > section.w-96 {
+    display: flex !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: calc(100dvh - 4rem) !important;
+    flex-grow: 1 !important;
+    border-right: none !important;
+  }
+
+  body:not(.mobile-chat-open) main > section:last-of-type,
+  body:not(.mobile-chat-open) main > section.flex-grow {
+    display: none !important;
+  }
+
+  /* Active chat open view on mobile - Hide bottom navbar for full-screen chat */
+  body.mobile-chat-open main > section:first-of-type,
+  body.mobile-chat-open main > section.w-96 {
+    display: none !important;
+  }
+
+  body.mobile-chat-open main > section:last-of-type,
+  body.mobile-chat-open main > section.flex-grow {
+    display: flex !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    flex-grow: 1 !important;
+  }
+
+  body.mobile-chat-open #mobileBottomNav,
+  body.mobile-chat-open nav.fixed.left-0 {
+    display: none !important;
+  }
+
+  body.mobile-chat-open main,
+  body.mobile-chat-open main.ml-64 {
+    padding-bottom: 0 !important;
+    height: 100dvh !important;
+  }
+
+  #mobileBackToConversationsBtn {
+    display: flex !important;
+  }
+
+  header.h-16 {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    height: 3.5rem !important;
+  }
+
+  #activeVideoCallLink span:last-child {
+    display: none !important;
+  }
+
+  #activeVideoCallLink {
+    padding: 0.4rem 0.6rem !important;
+    border-radius: 9999px !important;
+  }
+
+  /* --- 3. Responsive Video Call (call.html - Stitch Messenger Style) --- */
+  #roomStatusLabel {
+    display: none !important;
+  }
+
+  main.bg-surface {
+    position: relative !important;
+    overflow: hidden !important;
+    height: calc(100dvh - 3.5rem) !important;
+    max-height: calc(100dvh - 3.5rem) !important;
+  }
+
+  #videoSection {
+    width: 100vw !important;
+    height: 100% !important;
+    padding: 0 !important;
+    position: relative !important;
+    display: block !important;
+  }
+
+  /* Remote Video Container: 100% Fullscreen background */
+  #videoSection > div.flex-1:first-child,
+  #videoSection > div.flex-1:first-child > div.video-container {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100% !important;
+    z-index: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  #remoteVideo {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  /* Self Video PIP (Picture-In-Picture) Floating Window */
+  #videoSection > div.flex-1:nth-child(2) {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 110px !important;
+    height: 150px !important;
+    z-index: 30 !important;
+    touch-action: none !important;
+    user-select: none !important;
+    cursor: move !important;
+  }
+
+  #videoSection > div.flex-1:nth-child(2) > div.video-container {
+    width: 110px !important;
+    height: 150px !important;
+    border-radius: 1rem !important;
+    border: 2px solid rgba(255, 255, 255, 0.4) !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+    overflow: hidden !important;
+  }
+
+  #diagnosticHud {
+    display: none !important;
+  }
+
+  /* Subtitle overlay on mobile */
+  #floatingSubtitleOverlay,
+  #fixedSubtitleBar,
+  #subtitleOverlay {
+    bottom: 10px !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    z-index: 35 !important;
+    padding: 0 !important;
+  }
+
+  /* Transcript Drawer Overlay on Mobile (Default Hidden, Slide-over Overlay) */
+  #transcriptSidebar {
+    transition: transform 0.3s ease-in-out !important;
+  }
+
+  #transcriptSidebar:not(.hidden) {
+    position: fixed !important;
+    top: 3.5rem !important;
+    bottom: 4.5rem !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    height: calc(100dvh - 8rem) !important;
+    z-index: 50 !important;
+    background: rgba(21, 30, 50, 0.95) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border-radius: 1.5rem 1.5rem 0 0 !important;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  /* Call Controls Footer on Mobile (Only for call.html #callFooter) */
+  #callFooter {
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 40 !important;
+    height: 4.5rem !important;
+    padding: 0 0.5rem !important;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent) !important;
+    border-top: none !important;
+  }
+
+  #toggleMicBtn, #toggleCamBtn, #toggleMirrorBtn, #toggleSTTBtn, #toggleTTSBtn, #toggleSpeakerBtn {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+  }
+
+  #endCallBtn {
+    width: 52px !important;
+    height: 40px !important;
+  }
+
+  /* Conversation Chat Page Footer & Input Bar (Solid Background Fix) */
+  main section footer {
+    position: relative !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+    border-top: 1px solid #e2e8f0 !important;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  .dark main section footer {
+    background-color: #151e32 !important;
+    background-image: none !important;
+    border-top: 1px solid #1e293b !important;
+  }
+
+  #chatForm {
+    background: transparent !important;
+  }
+
+  #chatMessageInput {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  .dark #chatMessageInput {
+    background-color: #1e293b !important;
+    color: #ffffff !important;
+    border: 1px solid #334155 !important;
+  }
+
+  .p-8, .p-7, .p-6 {
+    padding: 1rem 0.75rem !important;
+  }
+
+  #moreCallOptionsModal .more-modal-header {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  #closeMoreOptionsBtn {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
+    width: 2rem !important;
+    min-width: 2rem !important;
+    max-width: 2rem !important;
+    height: 2rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+  }
+
+  #moreCallOptionsModal .more-modal-list button {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex-direction: row !important;
+    box-sizing: border-box !important;
+  }
+
+  #moreCallOptionsModal span {
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+  }
+
+  /* Self Video PIP Draggable Support */
+  #videoSection > div.flex-1:nth-child(2) {
+    touch-action: none !important;
+    user-select: none !important;
+    cursor: move !important;
+  }
+
+  #contactsList,
+  #suggestionsList,
+  main .grid-cols-1,
+  main .grid-cols-2,
+  main .grid-cols-3,
+  main .lg\:grid-cols-3 {
+    grid-template-columns: 1fr !important;
+    gap: 0.85rem !important;
+  }
+
+  section.bg-gradient-to-r,
+  .profile-hero-card {
+    padding: 1.25rem 1rem !important;
+    border-radius: 1.5rem !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  section.bg-gradient-to-r .flex,
+  .profile-hero-card .flex {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+  }
+
+  .flex.items-center.justify-between {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+
+  h1, h2, h3, h4, p, span, label {
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  div.liquid-bg,
+  div.login-gradient,
+  .login-left-banner,
+  .register-left-banner {
+    display: none !important;
+  }
+
+  .login-card,
+  .register-card,
+  div.grid-cols-2 > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 1rem !important;
+  }
+}
+
+/* Desktop Dropup Popover Transparent Backdrop Rule */
+@media (min-width: 640px) {
+  #moreCallOptionsModal {
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* ========================================================================== */
+/* FLOATING MINI CALL WIDGET (DRAGGABLE PiP & MINI OVERLAY)                   */
+/* ========================================================================== */
+
+#floatingMiniCallWidget {
+  position: fixed !important;
+  bottom: 24px;
+  right: 24px;
+  z-index: 99999 !important;
+  width: 300px;
+  height: 200px;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  background-color: #0f172a;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+  user-select: none;
+  touch-action: none;
+  display: none;
+  flex-direction: column;
+}
+
+#floatingMiniCallWidget.is-visible {
+  display: flex !important;
+}
+
+#floatingMiniCallWidget.is-dragging {
+  cursor: grabbing !important;
+  transform: scale(1.03);
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.8), 0 0 0 2px #0084FF !important;
+  transition: none !important;
+}
+
+#floatingMiniCallWidget .mini-drag-handle {
+  cursor: grab;
+}
+
+#floatingMiniCallWidget .mini-drag-handle:active {
+  cursor: grabbing;
+}
+
+#floatingMiniCallWidget .mini-action-overlay {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#floatingMiniCallWidget.show-controls .mini-action-overlay {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+#floatingMiniCallWidget .mini-selfie-pip {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 72px;
+  height: 50px;
+  border-radius: 0.65rem;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  z-index: 10;
+  background-color: #000;
+}
+
+#embeddedAppFrameContainer {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 40 !important;
+  background-color: #f8fafc;
+}
+
+@media (max-width: 640px) {
+  #floatingMiniCallWidget {
+    width: 220px !important;
+    height: 155px !important;
+    border-radius: 1rem !important;
+    bottom: 16px !important;
+    right: 16px !important;
+  }
+  #floatingMiniCallWidget .mini-selfie-pip {
+    width: 54px !important;
+    height: 38px !important;
+    border-radius: 0.5rem !important;
+  }
+  #floatingMiniCallWidget .mini-action-overlay button {
+    width: 2rem !important;
+    height: 2rem !important;
+  }
+  #floatingMiniCallWidget .mini-action-overlay button span {
+    font-size: 14px !important;
+  }
+}
+
+/* ========================================================================== */
+/* SMOOTH SIDEBAR CHAT TOGGLE ANIMATION (DESKTOP & MOBILE)                    */
+/* ========================================================================== */
+
+#transcriptSidebar {
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease !important;
+  will-change: width, transform, opacity;
+}
+
+#transcriptSidebar.is-collapsed {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+  border-left-width: 0 !important;
+  transform: translateX(100%);
+}
+
+#videoSection {
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* ========================================================================== */
+/* CUSTOM RANGE INPUT SLIDER STYLING (BLUE PROGRESS TRACK & THUMB)            */
+/* ========================================================================== */
+input[type="range"].accent-primary {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+input[type="range"].accent-primary::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+input[type="range"].accent-primary::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #2563eb;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.45);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="range"].accent-primary::-webkit-slider-thumb:hover {
+  transform: scale(1.18);
+  box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.18), 0 3px 8px rgba(37, 99, 235, 0.5);
+}
+
+input[type="range"].accent-primary::-webkit-slider-thumb:active {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.25), 0 3px 8px rgba(37, 99, 235, 0.6);
+}
+
+input[type="range"].accent-primary::-moz-range-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+input[type="range"].accent-primary::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #2563eb;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.45);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="range"].accent-primary::-moz-range-thumb:hover {
+  transform: scale(1.18);
+  box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.18), 0 3px 8px rgba(37, 99, 235, 0.5);
+}
+
+input[type="range"].accent-primary::-moz-range-thumb:active {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.25), 0 3px 8px rgba(37, 99, 235, 0.6);
+}
+
