@@ -104,7 +104,11 @@
     <script src="js/cv/feature_extractor.js?v=2.9.0"></script>
     <script src="js/cv/occlusion_handler.js?v=2.9.0"></script>
     <script src="js/cv/gesture_context.js?v=2.9.0"></script>
-    <script src="js/cv/dtw_classifier.js?v=2.9.0"></script>
+    <script src="js/cv/binary_dataset.js?v=3.0.0"></script>
+    <script src="js/services/indexed_db_service.js?v=3.0.0"></script>
+    <script src="js/cv/dtw_classifier.js?v=3.0.0"></script>
+    <script src="js/cv/pinch_detector.js?v=3.0.0"></script>
+    <script src="js/cv/vision_tracker.js?v=3.0.0"></script>
     <script src="js/call_controller.js?v=2.9.0"></script>
   </head>
   <body
@@ -234,6 +238,13 @@
                 <span>|</span>
                 <span>AI:</span>
                 <span id="hudAiMs" class="font-bold text-sky-400">12ms</span>
+              </div>
+              <div class="flex items-center gap-1.5 md:gap-2">
+                <span>Engine:</span>
+                <span id="hudAiEngine" class="font-bold text-teal-300">Init...</span>
+                <span>|</span>
+                <span>Pinch:</span>
+                <span id="hudPinch" class="font-bold text-slate-400">OFF</span>
               </div>
               <div class="flex items-center gap-1.5 md:gap-2">
                 <span>Tay:</span>

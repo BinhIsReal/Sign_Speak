@@ -1,8 +1,25 @@
 const CONFUSION_PAIRS = new Map([
-  ["Y", ["I"]],
-  ["I", ["Y"]],
+  ["Y", ["I", "i"]],
+  ["I", ["Y", "y"]],
+  ["y", ["i"]],
+  ["i", ["y"]],
+  ["V", ["U", "u"]],
+  ["U", ["V", "v"]],
+  ["v", ["u"]],
+  ["u", ["v"]],
+  ["B", ["Xin chào", "xin_chao", "chao"]],
+  ["b", ["Xin chào", "xin_chao", "chao"]],
+  ["Xin chào", ["B", "b"]],
+  ["xin_chao", ["B", "b"]],
+  ["Không", ["O", "o"]],
+  ["khong", ["O", "o"]],
+  ["O", ["Không", "khong"]],
+  ["o", ["Không", "khong"]],
 ]);
-const CPD_RATIO_THRESHOLD = 1.15; // If 2nd best distance < 115% of best distance -> apply tiebreaker
+const CPD_RATIO_THRESHOLD = 1.25; // If 2nd best distance < 125% of best distance -> apply tiebreaker
+const STATIC_GESTURE_WORDS = new Set([
+  "a", "b", "c", "d", "e", "g", "h", "i", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "x", "y"
+]);
 
 class DTWClassifier {
   constructor(options = {}) {
@@ -19,16 +36,53 @@ class DTWClassifier {
     if (Array.isArray(templates)) {
       this.templates = templates
         .filter((t) => t && Array.isArray(t.sequence) && t.sequence.length > 0)
-        .map((t) => ({
-          id: t.id,
-          word: t.word,
-          category: t.category || "General",
-          sequence: this.resampleSequence(
+        .map((t) => {
+          const resampled = this.resampleSequence(
             t.sequence,
             this.targetResampleFrames,
-          ),
-        }));
+          );
+          const isStatic = STATIC_GESTURE_WORDS.has((t.id || t.word || "").toLowerCase());
+          const motionEnergy = this.calculateMotionEnergy(resampled);
+          return {
+            id: t.id,
+            word: t.word,
+            category: t.category || "General",
+            isStatic,
+            motionEnergy,
+            sequence: resampled,
+          };
+        });
     }
+  }
+
+  /**
+   * Universal Dataset Loader: accepts Array, Dictionary Object, or Binary ArrayBuffer
+   * @param {Array|Object|ArrayBuffer} rawDataset
+   * @param {Object} [adapter]
+   * @returns {number} Loaded template count
+   */
+  loadDataset(rawDataset, adapter = null) {
+    if (!rawDataset) return 0;
+
+    let datasetObj = rawDataset;
+    if (typeof BinaryDataset !== "undefined" && BinaryDataset.isBinaryDataset && BinaryDataset.isBinaryDataset(rawDataset)) {
+      datasetObj = BinaryDataset.decode(rawDataset);
+    }
+
+    const templates = [];
+    if (Array.isArray(datasetObj)) {
+      templates.push(...datasetObj);
+    } else if (typeof datasetObj === "object") {
+      for (const key of Object.keys(datasetObj)) {
+        const samples = datasetObj[key];
+        if (Array.isArray(samples)) {
+          templates.push(...samples);
+        }
+      }
+    }
+
+    this.loadTemplates(templates);
+    return this.templates.length;
   }
 
   /**
@@ -105,6 +159,10 @@ class DTWClassifier {
       this.targetResampleFrames,
     );
 
+    // Calculate input motion energy for TIER 1 Motion Energy Gate
+    const inputMotionEnergy = this.calculateMotionEnergy(resampledInput);
+    const inputIsStatic = inputMotionEnergy < 0.0075;
+
     // Detect if input sequence is a 2-hand gesture (check if spatial features 142-150 are non-zero)
     const isTwoHandInput = resampledInput.some(
       (f) => f.length >= 151 && (f[142] !== 0 || f[143] !== 0 || f[144] !== 0),
@@ -116,15 +174,27 @@ class DTWClassifier {
     let secondMatch = null;
 
     for (let template of this.templates) {
-      const dist = this.computeDTWDistance(resampledInput, template.sequence);
+      let dist = this.computeDTWDistance(resampledInput, template.sequence);
+
+      // --- TIER 1: Motion Energy Gate ---
+      if (inputIsStatic && !template.isStatic) {
+        dist += Math.min(0.08, Math.max(0, 0.0075 - inputMotionEnergy) * 6.0);
+      } else if (!inputIsStatic && inputMotionEnergy > 0.013 && template.isStatic) {
+        dist += Math.min(0.08, Math.max(0, inputMotionEnergy - 0.013) * 6.0);
+      }
+
       if (dist < minDistance) {
-        secondDistance = minDistance;
-        secondMatch = bestMatch;
+        if (bestMatch && (bestMatch.id || bestMatch.word).toLowerCase() !== (template.id || template.word).toLowerCase()) {
+          secondDistance = minDistance;
+          secondMatch = bestMatch;
+        }
         minDistance = dist;
         bestMatch = template;
       } else if (dist < secondDistance) {
-        secondDistance = dist;
-        secondMatch = template;
+        if (!bestMatch || (template.id || template.word).toLowerCase() !== (bestMatch.id || bestMatch.word).toLowerCase()) {
+          secondDistance = dist;
+          secondMatch = template;
+        }
       }
     }
 
@@ -154,48 +224,71 @@ class DTWClassifier {
       }
     }
 
-    // --- Confusion Pair Disambiguation (CPD) ---
+    // --- TIER 2: Confusion Pair Disambiguation (CPD) ---
     let confusionResolved = false;
     if (
       bestMatch &&
       secondMatch &&
-      CONFUSION_PAIRS.has(bestMatch.word) &&
-      CONFUSION_PAIRS.get(bestMatch.word).includes(secondMatch.word) &&
       minDistance > 0 &&
       secondDistance / minDistance < CPD_RATIO_THRESHOLD
     ) {
-      // Apply tiebreaker: compare thumb direction distance specifically
-      // Extract thumb direction slice (136–141) from middle frame of each sequence
-      const midIdx = Math.floor(resampledInput.length / 2);
-      const inputThumb =
-        resampledInput[midIdx] && resampledInput[midIdx].length >= 142
-          ? resampledInput[midIdx].slice(136, 142)
-          : new Array(6).fill(0);
-      const bestMidIdx = Math.floor(bestMatch.sequence.length / 2);
-      const bestThumb =
-        bestMatch.sequence[bestMidIdx] && bestMatch.sequence[bestMidIdx].length >= 142
-          ? bestMatch.sequence[bestMidIdx].slice(136, 142)
-          : new Array(6).fill(0);
-      const secMidIdx = Math.floor(secondMatch.sequence.length / 2);
-      const secThumb =
-        secondMatch.sequence[secMidIdx] && secondMatch.sequence[secMidIdx].length >= 142
-          ? secondMatch.sequence[secMidIdx].slice(136, 142)
-          : new Array(6).fill(0);
+      const w1 = (bestMatch.id || bestMatch.word).toLowerCase();
+      const w2 = (secondMatch.id || secondMatch.word).toLowerCase();
 
-      const distToBest = this.subVectorDist(inputThumb, bestThumb);
-      const distToSec = this.subVectorDist(inputThumb, secThumb);
+      // Check if pair is in registered confusion pairs
+      const isConfPair = (CONFUSION_PAIRS.has(bestMatch.word) && CONFUSION_PAIRS.get(bestMatch.word).some(p => p.toLowerCase() === w2)) ||
+                         (CONFUSION_PAIRS.has(w1) && CONFUSION_PAIRS.get(w1).some(p => p.toLowerCase() === w2));
 
-      if (distToSec < distToBest) {
-        // CPD flips decision to secondMatch
-        const temp = bestMatch;
-        bestMatch = secondMatch;
-        secondMatch = temp;
-        minDistance = secondDistance;
-        confusionResolved = true;
+      if (isConfPair) {
+        // 1. Disambiguate V vs U (Spread Index-Middle distance)
+        if ((w1 === "v" && w2 === "u") || (w1 === "u" && w2 === "v")) {
+          const tipDist = this.getIndexMiddleDistance(resampledInput);
+          if (tipDist > 0.125 && w1 === "u") {
+            const temp = bestMatch; bestMatch = secondMatch; secondMatch = temp; minDistance = secondDistance; confusionResolved = true;
+          } else if (tipDist <= 0.125 && w1 === "v") {
+            const temp = bestMatch; bestMatch = secondMatch; secondMatch = temp; minDistance = secondDistance; confusionResolved = true;
+          }
+        }
+        // 2. Disambiguate B vs Xin chào (Motion Energy & Thumb Position)
+        else if ((w1 === "b" && (w2.includes("chao") || w2.includes("chào"))) ||
+                 ((w1.includes("chao") || w1.includes("chào")) && w2 === "b")) {
+          if (inputMotionEnergy > 0.008 && w1 === "b") {
+            const temp = bestMatch; bestMatch = secondMatch; secondMatch = temp; minDistance = secondDistance; confusionResolved = true;
+          } else if (inputMotionEnergy <= 0.008 && w1 !== "b") {
+            const temp = bestMatch; bestMatch = secondMatch; secondMatch = temp; minDistance = secondDistance; confusionResolved = true;
+          }
+        }
+        // 3. Disambiguate Không vs O (Sweep motion vs Static Circle)
+        else if ((w1 === "khong" && w2 === "o") || (w1 === "o" && w2 === "khong")) {
+          if (inputMotionEnergy > 0.009 && w1 === "o") {
+            const temp = bestMatch; bestMatch = secondMatch; secondMatch = temp; minDistance = secondDistance; confusionResolved = true;
+          } else if (inputMotionEnergy <= 0.009 && w1 === "khong") {
+            const temp = bestMatch; bestMatch = secondMatch; secondMatch = temp; minDistance = secondDistance; confusionResolved = true;
+          }
+        }
+        // 4. Disambiguate Y vs I (Thumb direction vector)
+        else if ((w1 === "y" && w2 === "i") || (w1 === "i" && w2 === "y")) {
+          const midIdx = Math.floor(resampledInput.length / 2);
+          const inputThumb = resampledInput[midIdx] && resampledInput[midIdx].length >= 142 ? resampledInput[midIdx].slice(136, 142) : new Array(6).fill(0);
+          const bestMidIdx = Math.floor(bestMatch.sequence.length / 2);
+          const bestThumb = bestMatch.sequence[bestMidIdx] && bestMatch.sequence[bestMidIdx].length >= 142 ? bestMatch.sequence[bestMidIdx].slice(136, 142) : new Array(6).fill(0);
+          const secMidIdx = Math.floor(secondMatch.sequence.length / 2);
+          const secThumb = secondMatch.sequence[secMidIdx] && secondMatch.sequence[secMidIdx].length >= 142 ? secondMatch.sequence[secMidIdx].slice(136, 142) : new Array(6).fill(0);
+
+          const distToBest = this.subVectorDist(inputThumb, bestThumb);
+          const distToSec = this.subVectorDist(inputThumb, secThumb);
+
+          if (distToSec < distToBest) {
+            const temp = bestMatch; bestMatch = secondMatch; secondMatch = temp; minDistance = secondDistance; confusionResolved = true;
+          }
+        }
       }
     }
 
-    const isRejected = minDistance > adaptiveThreshold;
+    // Lower acceptance threshold to 75% confidence (minDistance <= adaptiveThreshold * 1.25)
+    // Allows dynamic gestures to trigger easily and rapidly without requiring strict >= 80%
+    const acceptanceDistanceLimit = adaptiveThreshold * 1.25;
+    const isRejected = minDistance > acceptanceDistanceLimit;
     const rawConf = isRejected
       ? Math.max(0, 100 - (minDistance / (adaptiveThreshold * 2.0)) * 40)
       : Math.max(0, 100 - (minDistance / adaptiveThreshold) * 20);
@@ -341,6 +434,53 @@ class DTWClassifier {
       sumSq += d * d;
     }
     return Math.sqrt(sumSq / len);
+  }
+
+  /**
+   * Calculate average per-frame displacement across hand landmarks (Motion Energy)
+   * @param {Array} sequence
+   * @returns {number} Motion Energy value
+   */
+  calculateMotionEnergy(sequence) {
+    if (!sequence || sequence.length < 2) return 0;
+    let totalDisplacement = 0;
+    const T = sequence.length;
+    for (let t = 1; t < T; t++) {
+      const prev = sequence[t - 1];
+      const curr = sequence[t];
+      // Landmark 0: wrist
+      const dx0 = (curr[0] || 0) - (prev[0] || 0);
+      const dy0 = (curr[1] || 0) - (prev[1] || 0);
+      const dz0 = (curr[2] || 0) - (prev[2] || 0);
+      const d0 = Math.sqrt(dx0 * dx0 + dy0 * dy0 + dz0 * dz0);
+
+      // Landmark 9: middle finger MCP
+      const dx9 = (curr[27] || 0) - (prev[27] || 0);
+      const dy9 = (curr[28] || 0) - (prev[28] || 0);
+      const dz9 = (curr[29] || 0) - (prev[29] || 0);
+      const d9 = Math.sqrt(dx9 * dx9 + dy9 * dy9 + dz9 * dz9);
+
+      totalDisplacement += (d0 + d9) * 0.5;
+    }
+    return totalDisplacement / (T - 1);
+  }
+
+  /**
+   * Calculate average distance between Index tip (landmark 8) and Middle tip (landmark 12)
+   * Used for disambiguating V (spread fingers) vs U (closed fingers)
+   * @param {Array} sequence
+   * @returns {number} Average distance
+   */
+  getIndexMiddleDistance(sequence) {
+    if (!sequence || sequence.length === 0) return 0;
+    let sum = 0;
+    for (const f of sequence) {
+      const dx = (f[24] || 0) - (f[36] || 0);
+      const dy = (f[25] || 0) - (f[37] || 0);
+      const dz = (f[26] || 0) - (f[38] || 0);
+      sum += Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+    return sum / sequence.length;
   }
 }
 

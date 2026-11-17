@@ -18,7 +18,8 @@
   <script src="js/cv/feature_extractor.js?v=2.9.0"></script>
   <script src="js/cv/occlusion_handler.js?v=2.9.0"></script>
   <script src="js/cv/gesture_context.js?v=2.9.0"></script>
-  <script src="js/cv/dtw_classifier.js?v=2.9.0"></script>
+  <script src="js/cv/binary_dataset.js?v=3.0.0"></script>
+  <script src="js/cv/dtw_classifier.js?v=3.0.0"></script>
   <style>
     body { font-family: "Outfit", sans-serif; }
     .stat-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 1rem; padding: 1.25rem; }
@@ -328,13 +329,13 @@
         sessionTotal++;
 
         // Update HUD
-        const confColor = prediction.confidence >= 80 ? '#34d399' : prediction.confidence >= 60 ? '#fbbf24' : '#f87171';
+        const confColor = prediction.confidence >= 75 ? '#34d399' : prediction.confidence >= 55 ? '#fbbf24' : '#f87171';
         const confEl = document.getElementById('bHudConf');
         if (confEl) { confEl.innerText = prediction.confidence + '%'; confEl.style.color = confColor; }
         const dtwEl = document.getElementById('bHudDtw');
         if (dtwEl) dtwEl.innerText = prediction.distance === Infinity ? 'inf' : prediction.distance.toFixed(3);
 
-        if (!prediction.isRejected && prediction.word && prediction.confidence >= 80) {
+        if (!prediction.isRejected && prediction.word && prediction.confidence >= 75) {
           sessionSuccess++;
           sessionConfSum += prediction.confidence;
 

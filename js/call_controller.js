@@ -74,6 +74,9 @@ function stopCallTimer() {
 
 let featureExtractor = new FeatureExtractor();
 let dtwClassifier = new DTWClassifier({ maxDistanceThreshold: 0.16 });
+let visionTracker = null;
+let pinchDetector = null;
+let lastVideoCurrentTime = -1;
 let lastInferenceTime = 0;
 const INFERENCE_INTERVAL_MS = 35;
 
@@ -137,65 +140,126 @@ function renderCamLoop() {
   requestAnimationFrame(renderCamLoop);
 }
 
-async function loadClassifierTemplates() {
-  const templatesToLoad = [];
-  const savedCustomDataset = localStorage.getItem('vsl_custom_dataset');
-  if (savedCustomDataset) {
-    try {
-      const customData = JSON.parse(savedCustomDataset);
-      Object.keys(customData).forEach(wordId => {
-        const wordSamples = customData[wordId];
-        if (wordSamples && wordSamples.length > 0) {
-          wordSamples.forEach((s, idx) => {
-            if (Array.isArray(s.sequence) && s.sequence.length > 0) {
-              templatesToLoad.push({
-                id: s.id || `${wordId}_custom_${idx + 1}`,
-                word: s.word || wordId,
-                sequence: s.sequence
-              });
-            }
-          });
-        }
-      });
-    } catch (e) {
-      console.warn("Lỗi nạp vsl_custom_dataset:", e);
-    }
+let templatesLoadPromise = null;
+let templatesLoadedOnce = false;
+let datasetNeedsRefresh = false;
+
+async function loadClassifierTemplates(forceRefresh = false) {
+  if (templatesLoadedOnce && !forceRefresh && !datasetNeedsRefresh) {
+    return;
+  }
+  if (templatesLoadPromise && !forceRefresh) {
+    return templatesLoadPromise;
   }
 
-  try {
-    const res = await fetch(`assets/data/vsl_dataset.json?v=${Date.now()}`, { cache: 'no-cache' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const masterData = await res.json();
-    let masterTemplates = [];
-    if (masterData && typeof masterData === 'object') {
-      Object.keys(masterData).forEach(wordId => {
-        const wordSamples = masterData[wordId];
-        if (wordSamples && wordSamples.length > 0) {
-          wordSamples.forEach((s, idx) => {
-            if (Array.isArray(s.sequence) && s.sequence.length > 0) {
-              masterTemplates.push({
-                id: s.id || `${wordId}_master_${idx + 1}`,
-                word: s.word || wordId,
-                sequence: s.sequence
-              });
+  const runLoad = async () => {
+    const templatesToLoad = [];
+    const savedCustomDataset = localStorage.getItem('vsl_custom_dataset');
+    if (savedCustomDataset) {
+      try {
+        const customData = JSON.parse(savedCustomDataset);
+        Object.keys(customData).forEach(wordId => {
+          const wordSamples = customData[wordId];
+          if (wordSamples && wordSamples.length > 0) {
+            wordSamples.forEach((s, idx) => {
+              if (Array.isArray(s.sequence) && s.sequence.length > 0) {
+                templatesToLoad.push({
+                  id: s.id || `${wordId}_custom_${idx + 1}`,
+                  word: s.word || wordId,
+                  sequence: s.sequence
+                });
+              }
+            });
+          }
+        });
+      } catch (e) {
+        console.warn("Lỗi nạp vsl_custom_dataset:", e);
+      }
+    }
+
+    const applyMasterData = (masterData) => {
+      let masterTemplates = [];
+      if (masterData && typeof masterData === 'object') {
+        Object.keys(masterData).forEach(wordId => {
+          const wordSamples = masterData[wordId];
+          if (wordSamples && wordSamples.length > 0) {
+            wordSamples.forEach((s, idx) => {
+              if (Array.isArray(s.sequence) && s.sequence.length > 0) {
+                masterTemplates.push({
+                  id: s.id || `${wordId}_master_${idx + 1}`,
+                  word: s.word || wordId,
+                  sequence: s.sequence
+                });
+              }
+            });
+          }
+        });
+      }
+      const templateMap = new Map();
+      masterTemplates.forEach(t => templateMap.set(t.id, t));
+      templatesToLoad.forEach(t => templateMap.set(t.id, t));
+      const combined = Array.from(templateMap.values());
+      dtwClassifier.loadTemplates(combined);
+      templatesLoadedOnce = true;
+      datasetNeedsRefresh = false;
+      console.log(`[Sign Speak Call] Đã nạp thành công ${combined.length} mẫu cử chỉ ký hiệu vào DTW Classifier!`);
+    };
+
+    try {
+      let masterData = null;
+
+      // 1. Try High-Performance Binary + IndexedDB 0ms boot if available
+      if (typeof IndexedDBService !== 'undefined' && typeof BinaryDataset !== 'undefined' && !forceRefresh) {
+        try {
+          const binResult = await IndexedDBService.getOrFetch(
+            'master_vsl_dataset',
+            'assets/data/vsl_dataset.bin',
+            'assets/data/dataset_version.json',
+            (freshBuffer) => {
+              try {
+                const updatedData = BinaryDataset.decode(freshBuffer);
+                applyMasterData(updatedData);
+                console.log('[Sign Speak Call] 🔥 Hot-reloaded master dataset from background sync!');
+              } catch (e) {
+                console.warn('[Sign Speak Call] Hot-reload decode error:', e);
+              }
             }
-          });
+          );
+          if (binResult && binResult.buffer) {
+            masterData = BinaryDataset.decode(binResult.buffer);
+          }
+        } catch (binErr) {
+          console.warn("[Sign Speak Call] Binary load fallback to JSON:", binErr);
         }
-      });
+      }
+
+      // 2. Fallback to JSON
+      if (!masterData) {
+        const url = forceRefresh
+          ? `assets/data/vsl_dataset.json?v=${Date.now()}`
+          : 'assets/data/vsl_dataset.json';
+        const fetchOpts = forceRefresh ? { cache: 'no-cache' } : undefined;
+        const res = await fetch(url, fetchOpts);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        masterData = await res.json();
+      }
+
+      applyMasterData(masterData);
+    } catch (err) {
+      console.warn("Lỗi nạp dataset:", err);
+      if (templatesToLoad.length > 0) {
+        dtwClassifier.loadTemplates(templatesToLoad);
+      }
+    } finally {
+      if (templatesLoadPromise === currentPromise) {
+        templatesLoadPromise = null;
+      }
     }
-    // Deduplicate templates by ID (custom user recorded templates override master templates)
-    const templateMap = new Map();
-    masterTemplates.forEach(t => templateMap.set(t.id, t));
-    templatesToLoad.forEach(t => templateMap.set(t.id, t));
-    const combined = Array.from(templateMap.values());
-    dtwClassifier.loadTemplates(combined);
-    console.log(`[Sign Speak Call] Đã nạp thành công ${combined.length} mẫu cử chỉ ký hiệu (toàn bộ 35 từ & bảng chữ cái) vào DTW Classifier!`);
-  } catch (err) {
-    console.warn("Lỗi nạp assets/data/vsl_dataset.json:", err);
-    if (templatesToLoad.length > 0) {
-      dtwClassifier.loadTemplates(templatesToLoad);
-    }
-  }
+  };
+
+  const currentPromise = runLoad();
+  templatesLoadPromise = currentPromise;
+  return currentPromise;
 }
 
 // Cross-tab dataset auto-sync listeners
@@ -204,7 +268,10 @@ if (typeof BroadcastChannel !== 'undefined') {
   datasetSyncChannel.onmessage = (event) => {
     if (event.data && event.data.type === 'DATASET_UPDATED') {
       console.log('[Sign Speak Call] Nhận được tín hiệu cập nhật dataset từ Collector, tự động nạp lại mẫu cử chỉ...');
-      loadClassifierTemplates();
+      datasetNeedsRefresh = true;
+      if (!document.hidden) {
+        loadClassifierTemplates(true);
+      }
     }
   };
 }
@@ -212,13 +279,16 @@ if (typeof BroadcastChannel !== 'undefined') {
 window.addEventListener('storage', (e) => {
   if (e.key === 'vsl_custom_dataset' || e.key === 'vsl_custom_words') {
     console.log('[Sign Speak Call] Phát hiện dữ liệu dataset thay đổi trong localStorage, tự động nạp lại...');
-    loadClassifierTemplates();
+    datasetNeedsRefresh = true;
+    if (!document.hidden) {
+      loadClassifierTemplates(true);
+    }
   }
 });
 
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) {
-    loadClassifierTemplates();
+  if (!document.hidden && datasetNeedsRefresh) {
+    loadClassifierTemplates(true);
   }
 });
 
@@ -320,42 +390,34 @@ async function initCall() {
     // STEP 1: PARALLEL BACKGROUND DATASET LOAD
     loadClassifierTemplates().catch(e => console.warn("Background load templates warning:", e));
 
-    // STEP 2: SETUP MEDIAPIPE HANDS
-    let hands = null;
+    // STEP 2: SETUP VISION ENGINE (Tasks Vision GPU with Graceful Fallback)
+    visionTracker = new VisionTracker({
+      maxNumHands: 2,
+      minDetectionConfidence: 0.52,
+      minTrackingConfidence: 0.50
+    });
+
+    pinchDetector = new PinchDetector({
+      engageThreshold: 0.36,
+      releaseThreshold: 0.50,
+      minHoldMs: 150
+    });
+
+    visionTracker.onResults((results) => {
+      onResults(results);
+    });
+
     try {
-      hands = new Hands({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-      });
-
-      hands.setOptions({
-        maxNumHands: 2,
-        modelComplexity: 1,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-      });
-
-      hands.onResults((rawResults) => {
-        const results = {
-          leftHandLandmarks: null,
-          rightHandLandmarks: null
-        };
-
-        if (rawResults.multiHandLandmarks && rawResults.multiHandedness) {
-          for (let i = 0; i < rawResults.multiHandLandmarks.length; i++) {
-            const label = rawResults.multiHandedness[i].label;
-            const landmarks = rawResults.multiHandLandmarks[i];
-            if (label === 'Left') {
-              results.leftHandLandmarks = landmarks;
-            } else {
-              results.rightHandLandmarks = landmarks;
-            }
-          }
-        }
-
-        onResults(results);
-      });
+      const activeBackend = await visionTracker.initialize();
+      console.log(`[Call Init] Vision Tracker ready using backend: ${activeBackend}`);
+      const engineElem = document.getElementById('hudAiEngine');
+      if (engineElem) {
+        engineElem.innerText = activeBackend.includes('gpu')
+          ? 'Tasks (GPU)'
+          : (activeBackend.includes('cpu') ? 'Tasks (CPU)' : 'Legacy Hands');
+      }
     } catch (e) {
-      console.warn("MediaPipe Hands init warning:", e);
+      console.warn("[Call Init] Vision Tracker init warning:", e);
     }
 
     // STEP 3: GET LOCAL CAMERA STREAM IMMEDIATELY
@@ -367,21 +429,27 @@ async function initCall() {
       });
 
       async function processVideoFrame() {
-        if (webcamVideo && !webcamVideo.paused && !webcamVideo.ended && webcamVideo.readyState >= 2 && hands) {
+        if (webcamVideo && !webcamVideo.paused && !webcamVideo.ended && webcamVideo.readyState >= 2 && visionTracker) {
           if (!isProcessingFrame) {
-            const now = performance.now();
-            if (now - lastCallAiTime >= AI_THROTTLE_MS) {
-              lastCallAiTime = now;
-              isProcessingFrame = true;
-              const aiStart = performance.now();
-              try {
-                await hands.send({ image: webcamVideo });
-              } catch (err) {
-              } finally {
-                aiProcessingTimeMs = Math.round(performance.now() - aiStart);
-                isProcessingFrame = false;
-                const aiElem = document.getElementById('hudAiMs');
-                if (aiElem) aiElem.innerText = `${aiProcessingTimeMs}ms`;
+            const currentVideoTime = webcamVideo.currentTime;
+            // Hardware-Synced: Only infer when camera hardware has produced a fresh frame!
+            if (currentVideoTime !== lastVideoCurrentTime) {
+              const now = performance.now();
+              if (now - lastCallAiTime >= AI_THROTTLE_MS) {
+                lastCallAiTime = now;
+                lastVideoCurrentTime = currentVideoTime;
+                isProcessingFrame = true;
+                const aiStart = performance.now();
+                try {
+                  await visionTracker.processVideo(webcamVideo, aiStart);
+                } catch (err) {
+                  console.warn('[Call AI] Frame process error:', err);
+                } finally {
+                  aiProcessingTimeMs = Math.round(performance.now() - aiStart);
+                  isProcessingFrame = false;
+                  const aiElem = document.getElementById('hudAiMs');
+                  if (aiElem) aiElem.innerText = `${aiProcessingTimeMs}ms`;
+                }
               }
             }
           }
@@ -649,6 +717,22 @@ function onResults(results) {
   }
 
   const now = performance.now();
+
+  // Schmitt-Trigger Hysteresis Pinch Update
+  if (pinchDetector) {
+    const pinchStatus = pinchDetector.update(results, now);
+    const pinchElem = document.getElementById('hudPinch');
+    if (pinchElem) {
+      if (pinchStatus.hasActivePinch) {
+        pinchElem.innerText = 'PINCH';
+        pinchElem.className = 'font-bold text-amber-400 animate-pulse';
+      } else {
+        pinchElem.innerText = 'OFF';
+        pinchElem.className = 'font-bold text-slate-400';
+      }
+    }
+  }
+
   if (now - lastInferenceTime >= INFERENCE_INTERVAL_MS) {
     lastInferenceTime = now;
 
@@ -680,7 +764,7 @@ function onResults(results) {
       const hudRate = document.getElementById('hudAccuracyRate');
       if (hudConf) {
         hudConf.innerText = `${prediction.confidence}%`;
-        hudConf.style.color = prediction.confidence >= 80 ? '#34d399' : prediction.confidence >= 60 ? '#fbbf24' : '#f87171';
+        hudConf.style.color = prediction.confidence >= 75 ? '#34d399' : prediction.confidence >= 55 ? '#fbbf24' : '#f87171';
       }
       if (hudDtw) hudDtw.innerText = prediction.distance === Infinity ? '∞' : prediction.distance.toFixed(3);
       if (hudWords) hudWords.innerText = `${sessionWordCount} từ`;
@@ -690,7 +774,7 @@ function onResults(results) {
         hudRate.style.color = rate >= 70 ? '#34d399' : rate >= 40 ? '#fbbf24' : '#f87171';
       }
 
-      if (!prediction.isRejected && prediction.word && prediction.confidence >= 80) {
+      if (!prediction.isRejected && prediction.word && prediction.confidence >= 75) {
         const currentTime = performance.now();
         // 1. Ignore rapid-fire duplicate triggering if user is simply holding the same hand sign in place
         if (prediction.word === lastRecognizedWord && (currentTime - lastRecognizedWordTime < WORD_RECOGNITION_COOLDOWN_MS)) {
@@ -698,7 +782,7 @@ function onResults(results) {
         }
 
         // 2. Ultra-short 250ms transition grace period
-        if (currentTime - lastRecognizedWordTime < 250 && prediction.confidence < 88) {
+        if (currentTime - lastRecognizedWordTime < 250 && prediction.confidence < 84) {
           return;
         }
 

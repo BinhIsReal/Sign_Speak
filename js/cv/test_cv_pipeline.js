@@ -10,6 +10,7 @@ if (typeof require !== 'undefined') {
   global.DTWClassifier = require('./dtw_classifier');
   global.GestureContextManager = require('./gesture_context');
   global.ClassifierEvaluator = require('./evaluate_classifier');
+  global.BinaryDataset = require('./binary_dataset');
 }
 
 function runCVPipelineTests() {
@@ -140,6 +141,32 @@ function runCVPipelineTests() {
   const evalResults = evaluator.evaluate(trainSet, testSet);
   assert(evalResults.bestAccuracy >= 70.0, "Classifier Evaluator verifies Accuracy ≥70% blocking gate condition");
   assert(evalResults.isBlockingGatePassed === true, "Blocking Gate is PASSED!");
+
+  // --- 7. Testing BinaryDataset (Lossless Float32 & IndexedDB Compatibility) ---
+  console.log("\n--- 7. Testing BinaryDataset (Lossless Float32 & IndexedDB Compatibility) ---");
+  const testDict = {
+    khong: [
+      { id: "khong", word: "Không", sequence: seqKhong }
+    ],
+    toi: [
+      { id: "toi", word: "Tôi", sequence: seqToi }
+    ]
+  };
+
+  const encodedBuffer = BinaryDataset.encode(testDict);
+  assert(encodedBuffer instanceof ArrayBuffer, "BinaryDataset encodes dictionary to ArrayBuffer");
+  assert(BinaryDataset.isBinaryDataset(encodedBuffer) === true, "BinaryDataset detects 'VSLB' magic signature");
+
+  const decodedDict = BinaryDataset.decode(encodedBuffer);
+  const isLossless = BinaryDataset.verifyLossless(testDict, decodedDict);
+  assert(isLossless === true, "BinaryDataset decodes back with 100% bitwise lossless precision (0.000000% error)");
+
+  const binClassifier = new DTWClassifier();
+  const loadedCount = binClassifier.loadDataset(encodedBuffer);
+  assert(loadedCount === 2, "DTWClassifier loads directly from binary ArrayBuffer");
+
+  const binPrediction = binClassifier.predict(seqKhong);
+  assert(binPrediction.word === "Không", "DTWClassifier predicts correctly from binary templates");
 
   console.log(`\n=======================================================`);
   console.log(`   Verification Summary: ${passedTests}/${totalTests} Tests Passed`);
