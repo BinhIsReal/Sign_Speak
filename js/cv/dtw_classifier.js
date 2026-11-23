@@ -15,8 +15,14 @@ const CONFUSION_PAIRS = new Map([
   ["khong", ["O", "o"]],
   ["O", ["Không", "khong"]],
   ["o", ["Không", "khong"]],
+  ["Tôi", ["G", "g"]],
+  ["toi", ["G", "g"]],
+  ["G", ["Tôi", "toi"]],
+  ["g", ["Tôi", "toi"]],
+  ["T", ["B", "b", "Tạm biệt", "tam_biet"]],
+  ["t", ["B", "b", "Tạm biệt", "tam_biet"]],
 ]);
-const CPD_RATIO_THRESHOLD = 1.25; // If 2nd best distance < 125% of best distance -> apply tiebreaker
+const CPD_RATIO_THRESHOLD = 1.75; // If 2nd best distance < 125% of best distance -> apply tiebreaker
 const STATIC_GESTURE_WORDS = new Set([
   "a", "b", "c", "d", "e", "g", "h", "i", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "x", "y"
 ]);
@@ -41,8 +47,22 @@ class DTWClassifier {
             t.sequence,
             this.targetResampleFrames,
           );
-          const isStatic = STATIC_GESTURE_WORDS.has((t.id || t.word || "").toLowerCase());
           const motionEnergy = this.calculateMotionEnergy(resampled);
+          const normalizedWord = (t.word || t.id || "").toLowerCase().replace(/_sample_\d+$/, "");
+          const isStatic = STATIC_GESTURE_WORDS.has(normalizedWord) || motionEnergy < 0.0070;
+
+          const idSampleMatch =
+            (t.id || "").match(/_sample_(\d+)$/) ||
+            (t.id || "").match(/_custom_(\d+)$/) ||
+            (t.id || "").match(/_master_(\d+)$/) ||
+            (t.id || "").match(/_(\d+)$/);
+          const sampleIndex =
+            t.sampleIndex !== undefined && t.sampleIndex !== null
+              ? t.sampleIndex
+              : idSampleMatch
+                ? parseInt(idSampleMatch[1], 10)
+                : null;
+
           return {
             id: t.id,
             word: t.word,
@@ -50,6 +70,8 @@ class DTWClassifier {
             isStatic,
             motionEnergy,
             sequence: resampled,
+            sampleIndex: sampleIndex,
+            wordKey: t.wordKey || null,
           };
         });
     }
@@ -76,7 +98,15 @@ class DTWClassifier {
       for (const key of Object.keys(datasetObj)) {
         const samples = datasetObj[key];
         if (Array.isArray(samples)) {
-          templates.push(...samples);
+          samples.forEach((s, idx) => {
+            if (s && Array.isArray(s.sequence)) {
+              templates.push({
+                ...s,
+                wordKey: s.wordKey || key,
+                sampleIndex: s.sampleIndex !== undefined ? s.sampleIndex : idx + 1,
+              });
+            }
+          });
         }
       }
     }
@@ -179,19 +209,19 @@ class DTWClassifier {
       // --- TIER 1: Motion Energy Gate ---
       if (inputIsStatic && !template.isStatic) {
         dist += Math.min(0.08, Math.max(0, 0.0075 - inputMotionEnergy) * 6.0);
-      } else if (!inputIsStatic && inputMotionEnergy > 0.013 && template.isStatic) {
-        dist += Math.min(0.08, Math.max(0, inputMotionEnergy - 0.013) * 6.0);
+      } else if (!inputIsStatic && inputMotionEnergy > 0.018 && template.isStatic) {
+        dist += Math.min(0.08, Math.max(0, inputMotionEnergy - 0.018) * 6.0);
       }
 
       if (dist < minDistance) {
-        if (bestMatch && (bestMatch.id || bestMatch.word).toLowerCase() !== (template.id || template.word).toLowerCase()) {
+        if (bestMatch && (bestMatch.word || bestMatch.id).toLowerCase() !== (template.word || template.id).toLowerCase()) {
           secondDistance = minDistance;
           secondMatch = bestMatch;
         }
         minDistance = dist;
         bestMatch = template;
       } else if (dist < secondDistance) {
-        if (!bestMatch || (template.id || template.word).toLowerCase() !== (bestMatch.id || bestMatch.word).toLowerCase()) {
+        if (!bestMatch || (template.word || template.id).toLowerCase() !== (bestMatch.word || bestMatch.id).toLowerCase()) {
           secondDistance = dist;
           secondMatch = template;
         }
@@ -232,7 +262,7 @@ class DTWClassifier {
       minDistance > 0 &&
       secondDistance / minDistance < CPD_RATIO_THRESHOLD
     ) {
-      const w1 = (bestMatch.id || bestMatch.word).toLowerCase();
+      const w1 = (bestMatch.word || bestMatch.id).toLowerCase();
       const w2 = (secondMatch.id || secondMatch.word).toLowerCase();
 
       // Check if pair is in registered confusion pairs
@@ -252,21 +282,47 @@ class DTWClassifier {
         // 2. Disambiguate B vs Xin chào (Motion Energy & Thumb Position)
         else if ((w1 === "b" && (w2.includes("chao") || w2.includes("chào"))) ||
                  ((w1.includes("chao") || w1.includes("chào")) && w2 === "b")) {
-          if (inputMotionEnergy > 0.008 && w1 === "b") {
+          const midIdx = Math.floor(resampledInput.length / 2);
+          const thumbExt = resampledInput[midIdx] && resampledInput[midIdx].length >= 132 ? resampledInput[midIdx][126] : 0;
+          if ((thumbExt > 2.85 || inputMotionEnergy > 0.008) && w1 === "b") {
             const temp = bestMatch; bestMatch = secondMatch; secondMatch = temp; minDistance = secondDistance; confusionResolved = true;
-          } else if (inputMotionEnergy <= 0.008 && w1 !== "b") {
+          } else if (thumbExt <= 2.75 && inputMotionEnergy <= 0.008 && w1 !== "b") {
             const temp = bestMatch; bestMatch = secondMatch; secondMatch = temp; minDistance = secondDistance; confusionResolved = true;
           }
         }
-        // 3. Disambiguate Không vs O (Sweep motion vs Static Circle)
+        // 3. Disambiguate Không vs O (Sweep motion / Index spread vs Static Circle)
         else if ((w1 === "khong" && w2 === "o") || (w1 === "o" && w2 === "khong")) {
-          if (inputMotionEnergy > 0.009 && w1 === "o") {
+          const xs = resampledInput.map(f => f[24] || 0);
+          const sweepX = Math.max(...xs) - Math.min(...xs);
+          const isSweepingKhong = (sweepX > 0.13 && inputMotionEnergy > 0.007) || inputMotionEnergy > 0.010;
+          if (isSweepingKhong && w1 === "o") {
             const temp = bestMatch; bestMatch = secondMatch; secondMatch = temp; minDistance = secondDistance; confusionResolved = true;
-          } else if (inputMotionEnergy <= 0.009 && w1 === "khong") {
+          } else if (!isSweepingKhong && w1 === "khong") {
             const temp = bestMatch; bestMatch = secondMatch; secondMatch = temp; minDistance = secondDistance; confusionResolved = true;
           }
         }
-        // 4. Disambiguate Y vs I (Thumb direction vector)
+        // 4. Disambiguate Tôi vs G (Chest pointing Z vs Outward Horizontal G)
+        else if ((w1 === "toi" && w2 === "g") || (w1 === "g" && w2 === "toi")) {
+          const midIdx = Math.floor(resampledInput.length / 2);
+          const indexTipZ = resampledInput[midIdx] && resampledInput[midIdx].length >= 27 ? resampledInput[midIdx][26] : 0;
+          if (indexTipZ > 0.02 && w1 === "g") {
+            const temp = bestMatch; bestMatch = secondMatch; secondMatch = temp; minDistance = secondDistance; confusionResolved = true;
+          } else if (indexTipZ <= 0.01 && w1 === "toi") {
+            const temp = bestMatch; bestMatch = secondMatch; secondMatch = temp; minDistance = secondDistance; confusionResolved = true;
+          }
+        }
+        // 5. Disambiguate T vs B / Tạm biệt (Thumb Tuck vs Extended Flat Hand)
+        else if ((w1 === "t" && (w2 === "b" || w2.includes("tam_biet") || w2.includes("tạm biệt"))) ||
+                 ((w1 === "b" || w1.includes("tam_biet") || w1.includes("tạm biệt")) && w2 === "t")) {
+          const midIdx = Math.floor(resampledInput.length / 2);
+          const thumbExt = resampledInput[midIdx] && resampledInput[midIdx].length >= 132 ? resampledInput[midIdx][126] : 0;
+          if (thumbExt >= 2.90 && w1 !== "t") {
+            const temp = bestMatch; bestMatch = secondMatch; secondMatch = temp; minDistance = secondDistance; confusionResolved = true;
+          } else if (thumbExt < 2.80 && w1 === "t") {
+            const temp = bestMatch; bestMatch = secondMatch; secondMatch = temp; minDistance = secondDistance; confusionResolved = true;
+          }
+        }
+        // 6. Disambiguate Y vs I (Thumb direction vector)
         else if ((w1 === "y" && w2 === "i") || (w1 === "i" && w2 === "y")) {
           const midIdx = Math.floor(resampledInput.length / 2);
           const inputThumb = resampledInput[midIdx] && resampledInput[midIdx].length >= 142 ? resampledInput[midIdx].slice(136, 142) : new Array(6).fill(0);
@@ -297,7 +353,12 @@ class DTWClassifier {
     return {
       word: isRejected ? null : bestMatch ? bestMatch.word : null,
       id: isRejected ? null : bestMatch ? bestMatch.id : null,
+      sampleIndex: isRejected ? null : bestMatch ? bestMatch.sampleIndex : null,
+      wordKey: isRejected ? null : bestMatch ? bestMatch.wordKey : null,
       matchedTemplate: bestMatch ? bestMatch.word : null,
+      matchedId: bestMatch ? bestMatch.id : null,
+      matchedSampleIndex: bestMatch ? bestMatch.sampleIndex : null,
+      matchedWordKey: bestMatch ? bestMatch.wordKey : null,
       distance: parseFloat(minDistance.toFixed(4)),
       confidence: confidence,
       isRejected: isRejected,

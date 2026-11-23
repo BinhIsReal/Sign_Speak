@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load master dataset if empty
   if (!collectedDataset || Object.keys(collectedDataset).length === 0) {
-    fetch(`assets/data/vsl_dataset.json?v=${Date.now()}`, { cache: "no-cache" })
+    fetch("assets/data/vsl_dataset.json")
       .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -87,13 +87,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (masterData && Object.keys(masterData).length > 0) {
           collectedDataset = masterData;
           localStorage.setItem("vsl_custom_dataset", JSON.stringify(collectedDataset));
-          updateSamplesList();
+          syncWordsFromDataset(collectedDataset);
+          populateWordDropdown();
           console.info("[Collector AI] Đã tự động nạp thành công bộ mẫu cử chỉ chuẩn (Master Dataset)!");
         }
       })
       .catch(err => {
         console.warn("Lỗi nạp assets/data/vsl_dataset.json:", err);
       });
+  } else {
+    syncWordsFromDataset(collectedDataset);
+    populateWordDropdown();
   }
 
   const savedCustomWords = localStorage.getItem("vsl_custom_words");
@@ -133,6 +137,88 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Cross-tab dataset auto-sync listeners
+  if (typeof BroadcastChannel !== 'undefined') {
+    try {
+      const datasetSyncChannel = new BroadcastChannel('vsl_dataset_sync');
+      datasetSyncChannel.onmessage = (event) => {
+        if (event.data && event.data.type === 'DATASET_UPDATED') {
+          const freshDataset = localStorage.getItem("vsl_custom_dataset");
+          if (freshDataset) {
+            try {
+              collectedDataset = JSON.parse(freshDataset);
+              syncWordsFromDataset(collectedDataset);
+              populateWordDropdown();
+            } catch (e) {}
+          }
+        }
+      };
+    } catch (e) {}
+  }
+
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'vsl_custom_dataset' || e.key === 'vsl_custom_words') {
+      try {
+        if (e.key === 'vsl_custom_dataset' && e.newValue) {
+          collectedDataset = JSON.parse(e.newValue);
+        }
+        if (e.key === 'vsl_custom_words' && e.newValue) {
+          customWords = JSON.parse(e.newValue);
+        }
+        syncWordsFromDataset(collectedDataset);
+        populateWordDropdown();
+      } catch (err) {}
+    }
+  });
+
+  // Synchronize words from any dataset into customWords & Vietnamese TTS
+  function syncWordsFromDataset(dataset) {
+    if (!dataset || typeof dataset !== 'object') return false;
+    let hasNewCustomWords = false;
+
+    Object.keys(dataset).forEach((wordId) => {
+      const inDict = dictionary.some((d) => d.id === wordId);
+      const inCustom = customWords.some((w) => w.id === wordId);
+
+      if (!inDict && !inCustom) {
+        const samples = dataset[wordId];
+        let displayName = wordId;
+        if (Array.isArray(samples) && samples.length > 0 && samples[0] && samples[0].word) {
+          displayName = samples[0].word;
+        } else {
+          displayName = wordId.length <= 2 ? wordId.toUpperCase() : wordId.replace(/_/g, " ");
+        }
+
+        const isAlphabet = wordId.length === 1 && /[a-z0-9]/i.test(wordId);
+        const newWordObj = {
+          id: wordId,
+          word: displayName,
+          category: isAlphabet ? "Bảng chữ cái" : "Dataset nạp",
+          type: "dynamic",
+          description: `Ký hiệu "${displayName}" nạp từ bộ dữ liệu`,
+          media_url: "",
+          isImported: true,
+        };
+
+        customWords.push(newWordObj);
+        hasNewCustomWords = true;
+
+        if (window.ttsService && typeof window.ttsService.registerCustomWord === "function") {
+          try {
+            window.ttsService.registerCustomWord(wordId, displayName);
+          } catch (e) {}
+        }
+      }
+    });
+
+    if (hasNewCustomWords) {
+      try {
+        localStorage.setItem("vsl_custom_words", JSON.stringify(customWords));
+      } catch (e) {}
+    }
+    return hasNewCustomWords;
+  }
+
   if (importDatasetBtn && importDatasetInput) {
     importDatasetBtn.addEventListener("click", () => importDatasetInput.click());
     importDatasetInput.addEventListener("change", (e) => {
@@ -143,18 +229,41 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
           const imported = JSON.parse(event.target.result);
           if (imported && typeof imported === 'object') {
-            collectedDataset = imported;
+            // Support both direct dictionary map { "a": [...] } or wrapped { dataset: {...} }
+            let targetDataset = imported;
+            if (imported.dataset && typeof imported.dataset === 'object') {
+              targetDataset = imported.dataset;
+            } else if (imported.data && typeof imported.data === 'object' && !Array.isArray(imported.data)) {
+              targetDataset = imported.data;
+            }
+
+            collectedDataset = targetDataset;
             localStorage.setItem("vsl_custom_dataset", JSON.stringify(collectedDataset));
-            updateSamplesList();
+
+            // Synchronize all newly imported sign words into customWords registry
+            syncWordsFromDataset(collectedDataset);
+
+            // Re-populate dropdown immediately with the new words and select the first one
+            const firstWordId = Object.keys(collectedDataset)[0];
+            populateWordDropdown(firstWordId);
+
             if (isTestMode) reloadTestClassifierTemplates();
             broadcastDatasetUpdated();
-            alert(`✅ Đã nạp thành công bộ dữ liệu mới từ file JSON! (${Object.keys(imported).length} từ vựng)`);
+
+            const totalWords = Object.keys(collectedDataset).length;
+            let totalSamples = 0;
+            Object.values(collectedDataset).forEach((arr) => {
+              if (Array.isArray(arr)) totalSamples += arr.length;
+            });
+
+            alert(`✅ Đã nạp thành công bộ dữ liệu mới từ file JSON!\n• Tổng số ký hiệu/từ vựng: ${totalWords} từ\n• Tổng số mẫu: ${totalSamples} mẫu\nDanh sách ký hiệu và bộ từ điển đã được cập nhật hiển thị đầy đủ trên giao diện!`);
           }
         } catch (err) {
           alert("Lỗi đọc file JSON: " + err.message);
         }
       };
       reader.readAsText(file);
+      e.target.value = "";
     });
   }
 
@@ -163,31 +272,100 @@ document.addEventListener('DOMContentLoaded', () => {
     .then((res) => res.json())
     .then((data) => {
       dictionary = data;
+      syncWordsFromDataset(collectedDataset);
       populateWordDropdown();
     })
-    .catch((err) => console.error("Lỗi nạp sign-dictionary.json:", err));
+    .catch((err) => {
+      console.error("Lỗi nạp sign-dictionary.json:", err);
+      syncWordsFromDataset(collectedDataset);
+      populateWordDropdown();
+    });
 
-  function populateWordDropdown() {
+  function populateWordDropdown(preferredSelectedId = null) {
     if (!signWordSelect) return;
-    let optionsHtml = dictionary
-      .map(
-        (item) => `
-    <option value="${item.id}">${item.word} (${item.category || "Ký hiệu"})</option>
-  `,
-      )
-      .join("");
 
-    if (customWords.length > 0) {
-      optionsHtml += customWords
-        .map(
-          (item) => `
-      <option value="${item.id}">➕ ${item.word} (Từ tự thêm)</option>
-    `,
-        )
+    // Sync any words existing in collectedDataset so they are never missed
+    syncWordsFromDataset(collectedDataset);
+
+    const prevSelected = preferredSelectedId || signWordSelect.value;
+    let optionsHtml = "";
+
+    // 1. Core Dictionary Words
+    if (dictionary.length > 0) {
+      optionsHtml += `<optgroup label="📚 Từ điển chuẩn (${dictionary.length} từ)">`;
+      optionsHtml += dictionary
+        .map((item) => {
+          const count = (collectedDataset[item.id] || []).length;
+          const badge = count > 0 ? ` [${count} mẫu]` : "";
+          return `<option value="${item.id}">${item.word} (${item.category || "Ký hiệu"})${badge}</option>`;
+        })
         .join("");
+      optionsHtml += `</optgroup>`;
+    }
+
+    // 2. Alphabet Signs
+    const alphabetWords = customWords.filter(
+      (w) => w.category === "Bảng chữ cái" || (w.id.length === 1 && /[a-z0-9]/i.test(w.id))
+    );
+    if (alphabetWords.length > 0) {
+      alphabetWords.sort((a, b) => a.id.localeCompare(b.id));
+      optionsHtml += `<optgroup label="🔤 Bảng chữ cái ngón tay (${alphabetWords.length} chữ cái)">`;
+      optionsHtml += alphabetWords
+        .map((item) => {
+          const count = (collectedDataset[item.id] || []).length;
+          const badge = count > 0 ? ` [${count} mẫu]` : "";
+          return `<option value="${item.id}">Chữ cái ${item.word}${badge}</option>`;
+        })
+        .join("");
+      optionsHtml += `</optgroup>`;
+    }
+
+    // 3. Other Custom or Imported Words
+    const otherCustomWords = customWords.filter(
+      (w) => !alphabetWords.some((a) => a.id === w.id)
+    );
+    if (otherCustomWords.length > 0) {
+      optionsHtml += `<optgroup label="✨ Ký hiệu từ bộ dữ liệu & Tự thêm (${otherCustomWords.length} từ)">`;
+      optionsHtml += otherCustomWords
+        .map((item) => {
+          const count = (collectedDataset[item.id] || []).length;
+          const badge = count > 0 ? ` [${count} mẫu]` : "";
+          const tag = item.category || "Dataset nạp";
+          return `<option value="${item.id}">➕ ${item.word} (${tag})${badge}</option>`;
+        })
+        .join("");
+      optionsHtml += `</optgroup>`;
+    }
+
+    // 4. Fallback for any remaining keys in collectedDataset
+    const knownIds = new Set([
+      ...dictionary.map((d) => d.id),
+      ...customWords.map((w) => w.id),
+    ]);
+    const orphanKeys = Object.keys(collectedDataset || {}).filter(
+      (k) => !knownIds.has(k)
+    );
+    if (orphanKeys.length > 0) {
+      optionsHtml += `<optgroup label="📦 Ký hiệu khác trong Dataset (${orphanKeys.length})">`;
+      optionsHtml += orphanKeys
+        .map((k) => {
+          const samples = collectedDataset[k] || [];
+          const label = samples[0] && samples[0].word ? samples[0].word : k;
+          return `<option value="${k}">📦 ${label} [${samples.length} mẫu]</option>`;
+        })
+        .join("");
+      optionsHtml += `</optgroup>`;
     }
 
     signWordSelect.innerHTML = optionsHtml;
+
+    // Restore previous selection or pick the first option
+    if (prevSelected && Array.from(signWordSelect.options).some((o) => o.value === prevSelected)) {
+      signWordSelect.value = prevSelected;
+    } else if (signWordSelect.options.length > 0) {
+      signWordSelect.selectedIndex = 0;
+    }
+
     updateSamplesList();
   }
 
@@ -247,7 +425,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Init MediaPipe Hands
+  // Init MediaPipe Hands (Zero-latency, Hardware Accelerated, 100% vector skeleton render)
   const hands = new Hands({
     locateFile: (file) =>
       `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
@@ -420,12 +598,15 @@ document.addEventListener('DOMContentLoaded', () => {
     ) {
       const prediction = dtwClassifier.predict(frameData.sequenceComplete);
 
-      const isPassed = !prediction.isRejected && prediction.confidence >= 80;
+      const isPassed = !prediction.isRejected && prediction.confidence >= 75;
       const wordText = isPassed
         ? prediction.word
         : prediction.matchedTemplate
-          ? `${prediction.matchedTemplate} (Dưới 80%)`
+          ? `${prediction.matchedTemplate} (Dưới 75%)`
           : "Chưa nhận diện";
+
+      const matchedWordId = prediction.wordKey || findWordIdByName(prediction.word || prediction.matchedTemplate);
+      const sampleNum = prediction.sampleIndex || prediction.matchedSampleIndex || null;
 
       const wordElem = document.getElementById("testPredictedWord");
       if (wordElem) wordElem.innerText = wordText;
@@ -438,6 +619,16 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const distElem = document.getElementById("testDistanceText");
       if (distElem) distElem.innerText = `dist: ${prediction.distance} | threshold: ${prediction.thresholdUsed}`;
+
+      const matchedSampleBadge = document.getElementById("testMatchedSampleBadge");
+      if (matchedSampleBadge) {
+        if (isPassed && sampleNum) {
+          matchedSampleBadge.innerText = `Khớp: Mẫu #${sampleNum}`;
+          matchedSampleBadge.classList.remove("hidden");
+        } else {
+          matchedSampleBadge.classList.add("hidden");
+        }
+      }
 
       const nowTime = performance.now();
       const isDuplicateRapid = (isPassed && prediction.word === lastTestWord && (nowTime - lastTestWordTime < TEST_WORD_COOLDOWN_MS));
@@ -453,9 +644,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!isDuplicateRapid) {
         testHistory.unshift({
           word: wordText,
+          wordId: matchedWordId,
           confidence: prediction.confidence,
           distance: prediction.distance,
           isPassed: isPassed,
+          sampleIndex: sampleNum,
           time: new Date().toLocaleTimeString(),
         });
       }
@@ -466,12 +659,24 @@ document.addEventListener('DOMContentLoaded', () => {
         .slice(0, 10)
         .map(
           (item) => `
-      <div class="py-1.5 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <span class="text-[10px] text-slate-500">${item.time}</span>
-          <strong class="${item.isPassed ? "text-emerald-400" : "text-amber-300"}">${item.word}</strong>
+      <div class="py-2 px-2 flex items-center justify-between hover:bg-slate-900/70 rounded-xl transition-all border border-transparent hover:border-slate-800/80">
+        <div class="flex items-center gap-2 flex-wrap min-w-0">
+          <span class="text-[10px] text-slate-500 font-mono">${item.time}</span>
+          <strong class="${item.isPassed ? "text-emerald-400 font-extrabold" : "text-amber-300"} text-sm tracking-tight">${item.word}</strong>
+          ${item.sampleIndex ? `
+            <button
+              type="button"
+              onclick="window.viewSampleInList('${item.wordId || ''}', ${item.sampleIndex})"
+              title="Bấm để xem mẫu #${item.sampleIndex} trong Danh Sách Mẫu Của Từ Này"
+              class="px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-sky-950/90 hover:bg-sky-900 text-sky-300 border border-sky-800/80 shadow-xs flex items-center gap-1 transition-all cursor-pointer hover:scale-105 active:scale-95"
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
+              <span>Mẫu #${item.sampleIndex}</span>
+              <span class="material-symbols-outlined text-[12px] opacity-70">open_in_new</span>
+            </button>
+          ` : ""}
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 shrink-0">
           <span class="font-mono text-[11px] text-slate-400">dist: ${item.distance}</span>
           <span class="px-2 py-0.5 rounded-md text-[10px] font-bold ${item.isPassed ? "bg-emerald-950 text-emerald-300 border border-emerald-800" : "bg-amber-950 text-amber-300 border border-amber-800"}">${item.confidence}%</span>
         </div>
@@ -637,7 +842,7 @@ document.addEventListener('DOMContentLoaded', () => {
       "vsl_custom_dataset",
       JSON.stringify(collectedDataset),
     );
-    updateSamplesList();
+    populateWordDropdown(selectedId);
     broadcastDatasetUpdated();
 
     fetch("api/save_dataset.php", {
@@ -726,7 +931,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  function updateSamplesList() {
+  function updateSamplesList(highlightSampleIndex = null) {
     if (!signWordSelect || !samplesListContainer) return;
     const selectedId = signWordSelect.value;
     const samples = collectedDataset[selectedId] || [];
@@ -755,15 +960,24 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       samplesListContainer.innerHTML = samples
         .map((item, i) => {
+          const sampleNum = i + 1;
           const stat = consistencyReport.sampleStats[i] || { isOutlier: false, avgDist: 0 };
           const isOutlier = stat.isOutlier;
+          const isHighlighted = highlightSampleIndex === sampleNum;
 
           return `
-      <div class="flex items-center justify-between p-2.5 rounded-xl text-xs transition-all ${isOutlier ? "bg-rose-950/60 border border-rose-500/60 shadow-lg shadow-rose-950/30" : "bg-slate-900/80 border border-slate-800"}">
+      <div id="sampleCard_${selectedId}_${sampleNum}" class="flex items-center justify-between p-2.5 rounded-xl text-xs transition-all ${
+        isHighlighted
+          ? "bg-sky-950/80 border-2 border-sky-400 shadow-lg shadow-sky-900/50 scale-[1.01]"
+          : isOutlier
+            ? "bg-rose-950/60 border border-rose-500/60 shadow-lg shadow-rose-950/30"
+            : "bg-slate-900/80 border border-slate-800"
+      }">
         <div>
           <div class="flex items-center gap-2">
-            <span class="font-bold ${isOutlier ? "text-rose-300" : "text-sky-400"}">Mẫu #${i + 1}</span>
+            <span class="font-bold ${isHighlighted ? "text-sky-300" : isOutlier ? "text-rose-300" : "text-sky-400"}">Mẫu #${sampleNum}</span>
             <span class="text-slate-500 font-mono text-[10px]">(${item.sequence.length} frames)</span>
+            ${isHighlighted ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-500 text-white animate-pulse">🎯 ĐANG KHỚP</span>` : ""}
             ${isOutlier ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-600 text-white animate-pulse">⚠️ DỊ BIỆT</span>` : `<span class="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800">✅ Chuẩn</span>`}
           </div>
           ${stat.avgDist > 0 ? `<div class="text-[10px] text-slate-400 font-mono mt-0.5">Khoảng cách chéo: ${stat.avgDist}</div>` : ''}
@@ -775,8 +989,42 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
         })
         .join("");
+
+      if (highlightSampleIndex) {
+        setTimeout(() => {
+          const el = document.getElementById(`sampleCard_${selectedId}_${highlightSampleIndex}`);
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }, 50);
+      }
     }
   }
+
+  function findWordIdByName(wordName) {
+    if (!wordName) return null;
+    const lower = wordName.toLowerCase();
+    for (const wId of Object.keys(collectedDataset)) {
+      if (wId.toLowerCase() === lower) return wId;
+      const samples = collectedDataset[wId];
+      if (samples && samples.length > 0 && samples[0].word && samples[0].word.toLowerCase() === lower) {
+        return wId;
+      }
+    }
+    const dictItem = dictionary.find((d) => (d.word && d.word.toLowerCase() === lower) || d.id.toLowerCase() === lower);
+    if (dictItem) return dictItem.id;
+    const customItem = customWords.find((w) => (w.word && w.word.toLowerCase() === lower) || w.id.toLowerCase() === lower);
+    if (customItem) return customItem.id;
+    return null;
+  }
+
+  window.viewSampleInList = function (wordId, sampleIndex) {
+    if (!signWordSelect) return;
+    const targetWordId = wordId || signWordSelect.value;
+    if (targetWordId && signWordSelect.value !== targetWordId) {
+      signWordSelect.value = targetWordId;
+      populateWordDropdown(targetWordId);
+    }
+    updateSamplesList(sampleIndex);
+  };
 
   window.deleteSample = function (wordId, index) {
     if (collectedDataset[wordId]) {
@@ -785,7 +1033,7 @@ document.addEventListener('DOMContentLoaded', () => {
         "vsl_custom_dataset",
         JSON.stringify(collectedDataset),
       );
-      updateSamplesList();
+      populateWordDropdown(wordId);
       if (isTestMode) reloadTestClassifierTemplates();
       broadcastDatasetUpdated();
     }
@@ -877,7 +1125,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (collectedDataset[wordId]) {
       collectedDataset[wordId].splice(index, 1);
       localStorage.setItem("vsl_custom_dataset", JSON.stringify(collectedDataset));
-      updateSamplesList();
+      populateWordDropdown(wordId);
       if (isTestMode) reloadTestClassifierTemplates();
       broadcastDatasetUpdated();
       runFullDatasetAnomalyScan();
@@ -903,7 +1151,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         localStorage.setItem("vsl_custom_dataset", JSON.stringify(collectedDataset));
-        updateSamplesList();
+        populateWordDropdown();
         if (isTestMode) reloadTestClassifierTemplates();
         broadcastDatasetUpdated();
         runFullDatasetAnomalyScan();
@@ -923,7 +1171,7 @@ document.addEventListener('DOMContentLoaded', () => {
         collectedDataset = {};
         localStorage.removeItem("vsl_custom_dataset");
         dtwClassifier.loadTemplates([]);
-        updateSamplesList();
+        populateWordDropdown();
         broadcastDatasetUpdated();
         alert(
           "✅ Đã reset sạch sẽ bộ nhớ! Tất cả mẫu cũ đã được xóa. Bạn có thể bắt đầu quay mẫu mới từ đầu!",
@@ -1001,66 +1249,53 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function reloadTestClassifierTemplates() {
-    let customTemplates = [];
-    const savedCustomDataset = localStorage.getItem("vsl_custom_dataset");
-    if (savedCustomDataset) {
-      try {
-        const customData = JSON.parse(savedCustomDataset);
-        Object.keys(customData).forEach((wordId) => {
-          const wordSamples = customData[wordId];
-          if (wordSamples && wordSamples.length > 0) {
-            wordSamples.forEach((s, idx) => {
-              if (Array.isArray(s.sequence) && s.sequence.length > 0) {
-                customTemplates.push({
-                  id: s.id || `${wordId}_custom_${idx + 1}`,
-                  word: s.word || wordId,
-                  sequence: s.sequence,
-                });
-              }
-            });
-          }
-        });
-      } catch (e) {
-        console.warn("Lỗi nạp vsl_custom_dataset:", e);
+    let dataset = collectedDataset;
+    if (!dataset || Object.keys(dataset).length === 0) {
+      const saved = localStorage.getItem("vsl_custom_dataset");
+      if (saved) {
+        try {
+          dataset = JSON.parse(saved);
+        } catch (e) {
+          console.warn("Lỗi nạp vsl_custom_dataset:", e);
+        }
       }
     }
 
-    try {
-      const res = await fetch(`assets/data/vsl_dataset.json?v=${Date.now()}`, { cache: 'no-cache' });
-      const data = await res.json();
-      let defaultTemplates = [];
-      if (data && typeof data === "object") {
-        Object.keys(data).forEach((wordId) => {
-          const wordSamples = data[wordId];
-          if (wordSamples && wordSamples.length > 0) {
-            wordSamples.forEach((s, idx) => {
-              if (Array.isArray(s.sequence) && s.sequence.length > 0) {
-                defaultTemplates.push({
-                  id: s.id || `${wordId}_master_${idx + 1}`,
-                  word: s.word || wordId,
-                  sequence: s.sequence,
-                });
-              }
-            });
-          }
-        });
+    if (!dataset || Object.keys(dataset).length === 0) {
+      try {
+        const res = await fetch("assets/data/vsl_dataset.json");
+        dataset = await res.json();
+      } catch (err) {
+        console.warn("Lỗi nạp assets/data/vsl_dataset.json:", err);
       }
-      // Deduplicate templates by ID
-      const templateMap = new Map();
-      defaultTemplates.forEach(t => templateMap.set(t.id, t));
-      customTemplates.forEach(t => templateMap.set(t.id, t));
-      const combined = Array.from(templateMap.values());
-      dtwClassifier.loadTemplates(combined);
-      console.log(
-        `[Collector Live Tester] Đã nạp thành công ${combined.length} mẫu cử chỉ từ dataset vào DTW Classifier!`,
-      );
-      return combined.length;
-    } catch (err) {
-      if (customTemplates.length > 0) {
-        dtwClassifier.loadTemplates(customTemplates);
-      }
-      return customTemplates.length;
     }
+
+    const templates = [];
+    if (dataset && typeof dataset === "object") {
+      Object.keys(dataset).forEach((wordId) => {
+        const samples = dataset[wordId];
+        if (Array.isArray(samples)) {
+          samples.forEach((s, idx) => {
+            if (s && Array.isArray(s.sequence) && s.sequence.length > 0) {
+              const sampleNumber = idx + 1;
+              templates.push({
+                id: s.id ? (s.id.includes("_sample_") ? s.id : `${wordId}_sample_${sampleNumber}`) : `${wordId}_sample_${sampleNumber}`,
+                word: s.word || wordId,
+                wordKey: wordId,
+                sampleIndex: sampleNumber,
+                sequence: s.sequence,
+              });
+            }
+          });
+        }
+      });
+    }
+
+    dtwClassifier.loadTemplates(templates);
+    console.log(
+      `[Collector Live Tester] Đã nạp thành công ${templates.length} mẫu cử chỉ từ dataset vào DTW Classifier!`,
+    );
+    return templates.length;
   }
 
   const toggleTestBtn = document.getElementById("toggleTestModeBtn");
